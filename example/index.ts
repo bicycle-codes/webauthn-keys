@@ -1,4 +1,4 @@
-import { FunctionComponent, render } from 'preact'
+import { type FunctionComponent, render } from 'preact'
 import { html } from 'htm/preact'
 import { example } from '../src/index.js'
 
