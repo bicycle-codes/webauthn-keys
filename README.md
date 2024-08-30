@@ -1,36 +1,54 @@
-# template ts browser
+# webauthn keys
+![tests](https://github.com/bicycle-codes/webauthn-keys/actions/workflows/nodejs.yml/badge.svg)
+[![types](https://img.shields.io/npm/types/@bicycle-codes/webauthn-keys?style=flat-square)](README.md)
+[![module](https://img.shields.io/badge/module-ESM%2FCJS-blue?style=flat-square)](README.md)
+[![semantic versioning](https://img.shields.io/badge/semver-2.0.0-blue?logo=semver&style=flat-square)](https://semver.org/)
+[![install size](https://packagephobia.com/badge?p=@bicycle-codes/webauthn-keys)](https://packagephobia.com/result?p=@bicycle-codes/webauthn-keys)
+[![dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg?style=flat-square)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
 
-A template for typescript *dependency* modules that run in a browser environment.
-Uses `tape-run` for tests in a browser. See [template-ts](https://github.com/nichoth/template-ts) for the same thing but targeting Node.
+A simple way to use crypto keys, protected by [webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric authentication).
 
-## use
-1. Use the template button in github. Or clone this then
-`rm -rf .git && git init`. Then `npm i && npm init`.
+[See a live demo](https://bicycle-codes.github.io/webauthn-keys/)
 
-2. Edit the source code in `src/index.ts`.
+<!-- toc -->
 
-3. Delete either `.github/workflows/gh-pages-docs.yml` or `.github/workflows/gh-pages.yml`, depending on whether you want to deploy an example or docs to github pages.
+## install
 
-4. __Edit things__
-    * Use `./README.example.md` as a starter for docs:
-    ```sh
-    cp ./README.example.md ./README.md
-    ```
-    * edit the [build-example](https://github.com/nichoth/template-web-component/blob/c580636f1c912fe2633f7c2478f28b11729c9b80/package.json#L20) command in `package.json` so that it has the right
-    namespace for github pages
+```sh
+npm i -S @bicycle-codes/webauthn-keys
+```
 
-## featuring
+## Use
+This exposes ESM and common JS via [package.json `exports` field](https://nodejs.org/api/packages.html#exports).
 
-* compile the source to both ESM and CJS format, and put compiled files in `dist`.
-* ignore `dist` and `*.js` in git, but don't ignore them in npm. That way we
-  don't commit any compiled code to git, but it is available to consumers.
-* use npm's `prepublishOnly` hook to compile the code before publishing to npm.
-* use [exports](./package.json#L41) field in `package.json` to make sure the right format is used
-  by consumers.
-* `preversion` npm hook -- lint
-* `postversion` npm hook -- `git push --follow-tags && npm publish`
-* eslint -- `npm run lint`
-* tests run in a browser environment via `tape-run` -- see [`npm test`](./package.json#L12).
-  Includes `tap` testing tools -- [tapzero](https://github.com/bicycle-codes/tapzero)
-  and [tap-spec](https://www.npmjs.com/package/tap-spec)
-* CI via github actions
+### ESM
+```js
+import '@bicycle-codes/webauthn-keys'
+```
+
+### Common JS
+```js
+require('@namespace/webauthn-keys')
+```
+
+## Example
+
+### JS
+```js
+import '@bicycle-codes/webauthn-keys'
+```
+
+### pre-built JS
+This package exposes minified JS files too. Copy them to a location that is
+accessible to your web server, then link to them in HTML.
+
+#### copy
+```sh
+cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-keys.min.js
+```
+
+#### HTML
+```html
+<script type="module" src="./webauth-keys.min.js"></script>
+```

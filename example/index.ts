@@ -1,8 +1,6 @@
 import { type FunctionComponent, render } from 'preact'
 import { html } from 'htm/preact'
-import { example } from '../src/index.js'
-
-example()
+import 'cbor-js'
 
 const Example:FunctionComponent<unknown> = function () {
     return html`<div>hello</div>`
