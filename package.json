@@ -25,6 +25,18 @@
     "postversion": "git push --follow-tags && npm publish",
     "prepublishOnly": "npm run build"
   },
+  "dependencies": {
+    "@lo-fi/client-storage": "^0.10.0",
+    "@lo-fi/local-data-lock": "^0.13.1",
+    "@lo-fi/local-vault": "^0.14.0",
+    "@lo-fi/webauthn-local-client": "^0.999.7",
+    "@yoursunny/asn1": "^0.0.20200718",
+    "cbor-js": "^0.1.0",
+    "cborg": "^4.2.3",
+    "idb": "^8.0.0",
+    "libsodium": "^0.7.15",
+    "libsodium-wrappers": "^0.7.15"
+  },
   "devDependencies": {
     "@bicycle-codes/debug": "^0.6.13",
     "@bicycle-codes/tapzero": "^0.10.3",
@@ -63,17 +75,5 @@
     }
   },
   "author": "nichoth <nichoth@nichoth.com> (https://nichoth.com)",
-  "license": "MIT",
-  "dependencies": {
-    "@lo-fi/client-storage": "^0.10.0",
-    "@lo-fi/local-data-lock": "^0.13.1",
-    "@lo-fi/local-vault": "^0.14.0",
-    "@lo-fi/webauthn-local-client": "^0.999.7",
-    "@yoursunny/asn1": "^0.0.20200718",
-    "cbor-js": "^0.1.0",
-    "cborg": "^4.2.3",
-    "idb": "^8.0.0",
-    "libsodium": "^0.7.15",
-    "libsodium-wrappers": "^0.7.15"
-  }
+  "license": "MIT"
 }
