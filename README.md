@@ -62,6 +62,8 @@ cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-key
 
 ## see also
 
+* [Passkey vs. WebAuthn: What's the Difference?](https://teampassword.com/blog/passkey-vs-webauthn)
+
 ### `libsodium` docs
 
 * [How can I sign and encrypt using the same key pair?](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair)

@@ -1,4 +1,3 @@
-import store from '@lo-fi/client-storage/idb'
 import { createDebug } from '@bicycle-codes/debug'
 import libsodium from 'libsodium-wrappers'
 import {
@@ -11,19 +10,22 @@ import {
     checkRPID,
     getPublicKeyOpts,
     buildPasskeyEntry,
-    packPublicKeyJSON,
-    unpackPublicKeyJSON,
     credentialTypeKey,
-    resetAbortReason
+    resetAbortReason,
+    localIdentities,
+    storeLocalIdentities,
+    pushLocalIdentity
 } from './util'
-import type { Identity, Passkey, RegistrationResult } from './types'
+import type { Identity, RegistrationResult, LockKey } from './types'
 import * as cbor from 'cborg'
 const debug = createDebug()
+
+export { localIdentities, storeLocalIdentities, pushLocalIdentity }
 
 await libsodium.ready
 const sodium = libsodium
 
-const localIdentities = await loadLocalIdentities()
+// const externalSignalCache = new WeakMap()
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES
 const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
 
@@ -39,32 +41,41 @@ const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
 export async function registerLocalIdentity (
     localID = toBase64String(generateEntropy(15)),
     lockKey = deriveLockKey(),
-    opts:{
+    _opts:Partial<{
         username:string
         displayName:string
         relyingPartyID:string
         relyingPartyName:string
-    } = {
+    }> = {
         username: 'local-user',
         displayName: 'Local User',
         relyingPartyID: document.location.hostname,
         relyingPartyName: 'wacg'
     }
-) {
-    debug('lock key', lockKey)
+):Promise<{ record:Identity, keys }> {
     const abortToken = new AbortController()
+    const opts = Object.assign({
+        username: 'local-user',
+        displayName: 'Local User',
+        relyingPartyID: document.location.hostname,
+        relyingPartyName: 'wacg'
+    }, _opts)
     const { username, displayName, relyingPartyID, relyingPartyName } = opts
 
+    let result:{ record:Identity, keys }
     try {
-        const identityRecord = localIdentities[localID]
+        const identityRecord = (await localIdentities())[localID]
         const lastSeq = ((identityRecord || {}).lastSeq || 0) + 1
 
-        // note: encode the userHandle field of the passkey with the
-        // first 32 bytes of the keypair IV, and then 2 bytes
-        // to encode (big-endian) a passkey sequence value; this
-        // additional value allows multiple passkeys (up to 65,535 of
-        // them) registered on the same authenticator, sharing the same
-        // lock-keypair IV in its userHandle
+        /**
+         * @note
+         * encode the userHandle field of the passkey with the
+         * first 32 bytes of the keypair IV, and then 2 bytes
+         * to encode (big-endian) a passkey sequence value; this
+         * additional value allows multiple passkeys (up to 65,535 of
+         * them) registered on the same authenticator, sharing the same
+         * keypair IV in its userHandle
+         */
         const userHandle = new Uint8Array(lockKey.iv.byteLength + 2)
         const seqBytes = new DataView(new ArrayBuffer(2))
         seqBytes.setInt16(0, lastSeq, /* littleEndian= */false)
@@ -98,7 +109,7 @@ export async function registerLocalIdentity (
         const registrationResult = await register(opts, { relyingPartyID })
 
         if (registrationResult !== null) {
-            return {
+            result = {
                 record: {
                     lastSeq,
                     passkeys: [
@@ -109,15 +120,19 @@ export async function registerLocalIdentity (
                         }),
                     ],
                 },
-                lockKey,
+                keys: lockKey,
             }
+
+            await pushLocalIdentity(localID, result.record)
         }
     } catch (err) {
-        throw new Error('Identity/Passkey registration failed', { cause: err, })
+        throw new Error('Identity/Passkey registration failed', { cause: err })
     }
+
+    return result!
 }
 
-function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)) {
+function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
     try {
         const ed25519KeyPair = sodium.crypto_sign_seed_keypair(iv)
 
@@ -144,64 +159,9 @@ function generateEntropy (numBytes = 16) {
     return sodium.randombytes_buf(numBytes)
 }
 
-async function loadLocalIdentities ():Promise<Record<string, Identity>> {
-    return (
-        Object.fromEntries(
-            Object.entries<Identity>(
-                (await store.get('local-identities')) || {}
-            )
-                // only accept well-formed local-identity entries
-                .filter((id:[string, Identity]) => {
-                    const [, entry] = id
-
-                    return (
-                        typeof entry.lastSeq === 'number' &&
-                        Array.isArray(entry.passkeys) &&
-                        entry.passkeys.length > 0 &&
-                        entry.passkeys.every(passkey => (
-                            typeof passkey.credentialID === 'string' &&
-                            passkey.credentialID !== '' &&
-                            typeof passkey.seq === 'number' &&
-                            passkey.publicKey != null &&
-                            typeof passkey.publicKey === 'object' &&
-                            typeof passkey.publicKey.algoCOSE === 'number' &&
-                            typeof passkey.publicKey.raw === 'string' &&
-                            passkey.publicKey.raw !== '' &&
-                            typeof passkey.publicKey.spki === 'string' &&
-                            passkey.publicKey.spki !== '' &&
-                            typeof passkey.hash === 'string' &&
-                            passkey.hash !== '' &&
-                            passkey.hash === computePasskeyEntryHash(passkey)
-                        ))
-                    )
-                })
-                // unpack passkey public-keys
-                .map(([localID, entry,]) => ([
-                    localID,
-                    {
-                        ...entry,
-                        passkeys: entry.passkeys.map(passkey => ({
-                            ...passkey,
-                            publicKey: unpackPublicKeyJSON(passkey.publicKey),
-                        }))
-                    },
-                ]))
-        )
-    )
-}
-
-function computePasskeyEntryHash (passkeyEntry:Passkey) {
-    const { hash: _, ...passkey } = passkeyEntry
-    return toBase64String(sodium.crypto_hash(JSON.stringify({
-        ...passkey,
-        publicKey: packPublicKeyJSON(passkey.publicKey),
-    })))
-}
-
 async function register (regOptions:CredentialCreationOptions, opts:{
     relyingPartyID:string,
 }):Promise<RegistrationResult> {
-    debug('reg options', regOptions)
     const { relyingPartyID } = opts
 
     let res:RegistrationResult
@@ -211,7 +171,6 @@ async function register (regOptions:CredentialCreationOptions, opts:{
         }
 
         const regOpt = regOptions[credentialTypeKey]
-        debug('credential type key', credentialTypeKey)
         debug('reg opt', regOpt)
         debug('reg opt exclude', regOpt.excludeCredentials)
 
@@ -294,7 +253,7 @@ async function register (regOptions:CredentialCreationOptions, opts:{
                     algoCOSE: publicKeyAlgoCOSE,
                     algoOID: publicKeyAlgoOID,
                     spki: publicKeySPKI,
-                    raw: publicKeyRaw,
+                    raw: publicKeyRaw!,
                 },
                 ...(Object.fromEntries(
                     Object.entries(regAuthData).filter(([key]) => (
@@ -313,3 +272,47 @@ async function register (regOptions:CredentialCreationOptions, opts:{
 
     return res!
 }
+
+// function cleanupExternalSignalHandler (token:AbortController) {
+//     // controller previously attached to an
+//     // external abort-signal?
+//     if (token !== null && externalSignalCache.has(token)) {
+//         const [prevExternalSignal, handlerFn] = externalSignalCache.get(token)
+//         prevExternalSignal.removeEventListener('abort', handlerFn)
+//         externalSignalCache.delete(token)
+//     }
+// }
+
+// function resetAbortToken (
+//     abortToken:AbortController,
+//     externalSignal:AbortController
+// ) {
+//     // previous attempt still pending?
+//     if (abortToken) {
+//         cleanupExternalSignalHandler(abortToken)
+
+//         if (!abortToken.signal.aborted) {
+//             abortToken.abort('Passkey operation abandoned.')
+//         }
+//     }
+//     abortToken = new AbortController()
+
+//     // new external abort-signal passed in, to chain
+//     // off of?
+//     if (externalSignal !== null) {
+//         // signal already aborted?
+//         if (externalSignal.signal.aborted) {
+//             abortToken.abort(externalSignal.signal.reason)
+//         }
+//         // listen to future abort-signal
+//         else {
+//             let handlerFn = () => {
+//                 cleanupExternalSignalHandler(abortToken)
+//                 abortToken.abort(externalSignal.reason)
+//                 abortToken = externalSignal = handlerFn = null
+//             }
+//             externalSignal.addEventListener('abort', handlerFn)
+//             externalSignalCache.set(abortToken, [externalSignal, handlerFn,])
+//         }
+//     }
+// }

@@ -3,27 +3,49 @@ import { useCallback } from 'preact/hooks'
 import { html } from 'htm/preact'
 import './style.css'
 import Debug from '@bicycle-codes/debug'
-import { registerLocalIdentity } from '../src/index.js'
+import {
+    registerLocalIdentity,
+    localIdentities,
+} from '../src/index.js'
 const debug = Debug()
 
+debug('local ids', await localIdentities())
+
+// @ts-expect-error dev
+window.loadLocals = localIdentities
+
 const Example:FunctionComponent<unknown> = function () {
-    const register = useCallback((ev:MouseEvent) => {
+    const register = useCallback(async (ev:SubmitEvent) => {
         ev.preventDefault()
-        debug('click')
-        registerLocalIdentity()
+        const form = ev.target as HTMLFormElement
+        const els = form.elements
+        const username = (els['username'] as HTMLInputElement).value
+        debug('click', username)
+        const id = await registerLocalIdentity(undefined, undefined, {
+            username
+        })
+        debug('id', id)
     }, [])
 
-    return html`<div>
-        <button onClick=${register}>
-            Register with webauthn
-        </button>
-    </div>`
+    const storeThem = useCallback((ev:MouseEvent) => {
+        ev.preventDefault()
+    }, [])
+
+    return html`<form onSubmit=${register}>
+        <div>
+            <input type="text" name="username" id="username" />
+        </div>
+
+        <div>
+            <button type="submit">
+                Register with webauthn
+            </button>
+        </div>
+
+        <div>
+            <button onClick=${storeThem}>store them</button>
+        </div>
+    </form>`
 }
 
-// const id = await registerLocalIdentity()
-// debug('id', id)
-
-document.addEventListener('DOMContentLoaded', () => {
-    render(html`<${Example} />`, document.getElementById('root')!)
-})
-
+render(html`<${Example} />`, document.getElementById('root')!)

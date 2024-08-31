@@ -1,7 +1,10 @@
+import store from '@lo-fi/client-storage/idb'
 import libsodium from 'libsodium-wrappers'
 import ASN1 from '@yoursunny/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
-import type { PassKeyPublicKey } from './types'
+import type { PassKeyPublicKey, Identity } from './types'
+import Debug from '@bicycle-codes/debug'
+const debug = Debug()
 
 await libsodium.ready
 const sodium = libsodium
@@ -48,11 +51,14 @@ export function toUTF8String (val:Uint8Array):string {
 }
 
 // Adapted from: https://www.npmjs.com/package/@yoursunny/webcrypto-ed25519
-export function parsePublicKeySPKI (publicKeySPKI) {
+export function parsePublicKeySPKI (publicKeySPKI:Uint8Array):{
+    algo:string;
+    raw:Uint8Array
+} {
     const der = ASN1.parseVerbose(new Uint8Array(publicKeySPKI))
     return {
         algo: sodium.to_hex(findValue(der.children![0])!),
-        raw: findValue(der.children![1]),
+        raw: findValue(der.children![1])!,
     }
 }
 
@@ -150,8 +156,6 @@ export function getPublicKeyOpts (opts:Partial<{
         authenticatorSelection: {
             authenticatorAttachment: 'platform',
             userVerification: 'required',
-            residentKey: 'required',
-            requireResidentKey: true
         },
         challenge: sodium.randombytes_buf(20),
         excludeCredentials: [
@@ -170,94 +174,20 @@ export function getPublicKeyOpts (opts:Partial<{
     }
 }
 
-// export function regDefaults ({
-//     credentialType = 'publicKey',
-//     authenticatorSelection: {
-//         authenticatorAttachment = 'platform',
-//         userVerification = 'required',
-//         residentKey = 'required',
-//         requireResidentKey = true,
-
-//         ...otherAuthenticatorSelctionProps
-//     } = {},
-//     relyingPartyID = document.location.hostname,
-//     relyingPartyName = 'wacg',
-//     attestation = 'none',
-//     challenge = sodium.randombytes_buf(20),
-//     excludeCredentials = [
-//         // { type: "public-key", id: ..., }
-//     ],
-//     user: {
-//         name: userName = 'wacg-user',
-//         displayName: userDisplayName = userName,
-//         id: userID = sodium.randombytes_buf(5),
-//     } = {},
-//     publicKeyCredentialParams = (
-//         PUBLIC_KEY_ALGORITHMS.map(entry => ({
-//             type: 'public-key',
-//             alg: entry.COSEID,
-//         }))
-//     ),
-//     signal: cancelRegistrationSignal = null,
-//     ...otherPubKeyOptions
-// }:Partial<PublicKeyCredentialCreationOptions> = {}):CredentialCreationOptions {
-//     const defaults = {
-//         relyingPartyID,
-
-//         [credentialType]: {
-//             authenticatorSelection: {
-//                 authenticatorAttachment,
-//                 userVerification,
-//                 residentKey,
-//                 requireResidentKey,
-//                 ...otherAuthenticatorSelctionProps
-//             },
-
-//             attestation,
-
-//             rp: {
-//                 id: relyingPartyID,
-//                 name: relyingPartyName,
-//             },
-
-//             user: {
-//                 name: userName,
-//                 displayName: userDisplayName,
-//                 id: userID,
-//             },
-
-//             challenge,
-
-//             excludeCredentials,
-
-//             pubKeyCredParams: publicKeyCredentialParams,
-
-//             ...otherPubKeyOptions,
-//         },
-
-//         ...(cancelRegistrationSignal !== null ?
-//             { signal: cancelRegistrationSignal } :
-//             null),
-//     }
-
-//     // internal meta-data only
-//     Object.defineProperty(
-//         defaults,
-//         credentialTypeKey,
-//         {
-//             enumerable: false,
-//             writable: false,
-//             configurable: false,
-//             value: credentialType,
-//         }
-//     )
-
-//     return defaults
-// }
-
-export function buildPasskeyEntry (passkey) {
+// export function buildPasskeyEntry (passkey:Passkey):Passkey & { hash:string } {
+export function buildPasskeyEntry (passkey:{
+    seq:number;
+    credentialID:string;
+    publicKey:{
+        algoCOSE:COSEAlgorithmIdentifier;
+        algoOID:string;
+        spki:Uint8Array;
+        raw:Uint8Array;
+    }
+}) {
     return {
         ...passkey,
+        publicKey: packPublicKeyJSON(passkey.publicKey) as PassKeyPublicKey,
         hash: computePasskeyEntryHash(passkey),
     }
 }
@@ -265,6 +195,10 @@ export function buildPasskeyEntry (passkey) {
 function computePasskeyEntryHash (passkeyEntry) {
     const { hash: _, ...passkey } = passkeyEntry
 
+    /**
+     * @TODO
+     * use json-canon here
+     */
     return toBase64String(sodium.crypto_hash(JSON.stringify({
         ...passkey,
         publicKey: packPublicKeyJSON(passkey.publicKey),
@@ -294,22 +228,123 @@ export function unpackPublicKeyJSON (publicKeyEntryJSON:PassKeyPublicKey) {
 }
 
 export function packPublicKeyJSON (
-    publicKeyEntry:PassKeyPublicKey,
+    publicKey:{
+        algoCOSE:COSEAlgorithmIdentifier;
+        algoOID:string;
+        spki:Uint8Array|string;
+        raw:Uint8Array|string;
+    },
     stringify = false
-) {
-    publicKeyEntry = {
-        ...publicKeyEntry,
+):string|PassKeyPublicKey {
+    const _publicKey = {
+        ...publicKey,
         spki: (
-            typeof publicKeyEntry.spki !== 'string' ?
-                toBase64String(publicKeyEntry.spki) :
-                publicKeyEntry.spki
+            typeof publicKey.spki !== 'string' ?
+                toBase64String(publicKey.spki) :
+                publicKey.spki
         ),
         raw: (
-            typeof publicKeyEntry.raw !== 'string' ?
-                toBase64String(publicKeyEntry.raw) :
-                publicKeyEntry.raw
+            typeof publicKey.raw !== 'string' ?
+                toBase64String(publicKey.raw) :
+                publicKey.raw
         ),
     }
 
-    return (stringify ? JSON.stringify(publicKeyEntry) : publicKeyEntry)
+    return (stringify ? JSON.stringify(_publicKey) : _publicKey)
 }
+
+export async function localIdentities ():Promise<Record<string, Identity>> {
+    const ids = await loadLocalIdentities()
+    return ids
+}
+
+/**
+ * Add a single new identity to local storage.
+ */
+export async function pushLocalIdentity (localId:string, id:Identity) {
+    const existingIds = await localIdentities()
+    existingIds[localId] = id
+    storeLocalIdentities(existingIds)
+}
+
+/**
+ * Set the local storage identities
+ */
+export async function storeLocalIdentities (_identities:Record<string, Identity>) {
+    const identities = Object.fromEntries(
+        Object.entries(_identities)
+            .map(([localID, entry]) => ([
+                localID,
+                {
+                    ...entry,
+                    passkeys: entry.passkeys.map(passkey => ({
+                        ...passkey,
+                        publicKey: packPublicKeyJSON(passkey.publicKey),
+                    }))
+                },
+            ]))
+    )
+
+    debug('identities...', identities)
+
+    if (Object.keys(identities).length > 0) {
+        await store.set('local-identities', identities)
+    } else {
+        await store.remove('local-identities')
+    }
+}
+
+async function loadLocalIdentities ():Promise<Record<string, Identity>> {
+    const localIds = await store.get('local-identities') || {}
+    debug('local ids', localIds)
+
+    return (
+        Object.fromEntries(
+            Object.entries<Identity>(localIds)
+                // only accept well-formed local-identity entries
+                .filter((id:[string, Identity]) => {
+                    const [, entry] = id
+
+                    return (
+                        typeof entry.lastSeq === 'number' &&
+                        Array.isArray(entry.passkeys) &&
+                        entry.passkeys.length > 0 &&
+                        entry.passkeys.every(passkey => (
+                            typeof passkey.credentialID === 'string' &&
+                            passkey.credentialID !== '' &&
+                            typeof passkey.seq === 'number' &&
+                            passkey.publicKey != null &&
+                            typeof passkey.publicKey === 'object' &&
+                            typeof passkey.publicKey.algoCOSE === 'number' &&
+                            typeof passkey.publicKey.raw === 'string' &&
+                            passkey.publicKey.raw !== '' &&
+                            typeof passkey.publicKey.spki === 'string' &&
+                            passkey.publicKey.spki !== '' &&
+                            typeof passkey.hash === 'string' &&
+                            passkey.hash !== '' &&
+                            passkey.hash === computePasskeyEntryHash(passkey)
+                        ))
+                    )
+                })
+                // unpack passkey public-keys
+                .map(([localID, entry,]) => ([
+                    localID,
+                    {
+                        ...entry,
+                        passkeys: entry.passkeys.map(passkey => ({
+                            ...passkey,
+                            publicKey: unpackPublicKeyJSON(passkey.publicKey),
+                        }))
+                    },
+                ]))
+        )
+    )
+}
+
+// function computePasskeyEntryHash (passkeyEntry:Passkey) {
+//     const { hash: _, ...passkey } = passkeyEntry
+//     return toBase64String(sodium.crypto_hash(JSON.stringify({
+//         ...passkey,
+//         publicKey: packPublicKeyJSON(passkey.publicKey),
+//     })))
+// }

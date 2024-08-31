@@ -1,3 +1,15 @@
+form {
+    max-width: 15rem;
+
+    & input {
+        width: 100%;
+    }
+
+    & div {
+        margin-bottom: 1rem;
+    }
+}
+
 button {
     padding: 0.5rem 1rem;
     cursor: pointer;

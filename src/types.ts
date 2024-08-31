@@ -1,5 +1,6 @@
 export interface PassKeyPublicKey {
-    algoCOSE:number;
+    algoCOSE:COSEAlgorithmIdentifier;
+    algoOID:string;
     raw:string;
     spki:string;
 }
@@ -28,8 +29,17 @@ export interface RegistrationResult {
             algoCOSE:COSEAlgorithmIdentifier;
             algoOID:string;
             spki:Uint8Array;
-            raw:Uint8Array|null;
+            raw:Uint8Array;
         },
         raw:AuthenticatorResponse;
     };
+}
+
+export interface LockKey {
+    keyFormatVersion:number;
+    iv:Uint8Array;
+    publicKey:Uint8Array;
+    privateKey:Uint8Array;
+    encPK:Uint8Array;
+    encSK:Uint8Array;
 }

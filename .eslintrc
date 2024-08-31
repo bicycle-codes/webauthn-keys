@@ -36,6 +36,7 @@
         "maxEOF": 1
       }
     ],
+    "dot-notation": "off",
     "indent": ["error", 4, {
       "SwitchCase": 1,
       "ignoredNodes": ["TemplateLiteral *"]
