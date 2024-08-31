@@ -14,7 +14,7 @@ debug('local ids', await localIdentities())
 // @ts-expect-error dev
 window.loadLocals = localIdentities
 
-const Example:FunctionComponent<unknown> = function () {
+const Example:FunctionComponent = function () {
     const register = useCallback(async (ev:SubmitEvent) => {
         ev.preventDefault()
         const form = ev.target as HTMLFormElement
