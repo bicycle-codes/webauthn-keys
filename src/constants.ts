@@ -2,7 +2,7 @@
  * NOTE: these are ordered by "preference" for key
  * generation by WebAuthn create()
  */
-export const publicKeyAlgorithms = [
+export const PUBLIC_KEY_ALGORITHMS = [
     // Ed25519 / EdDSA
     // https://oid-rep.orange-labs.fr/get/1.3.101.112
     {

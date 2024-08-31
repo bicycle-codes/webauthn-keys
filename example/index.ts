@@ -1,9 +1,29 @@
 import { type FunctionComponent, render } from 'preact'
+import { useCallback } from 'preact/hooks'
 import { html } from 'htm/preact'
-import 'cbor-js'
+import './style.css'
+import Debug from '@bicycle-codes/debug'
+import { registerLocalIdentity } from '../src/index.js'
+const debug = Debug()
 
 const Example:FunctionComponent<unknown> = function () {
-    return html`<div>hello</div>`
+    const register = useCallback((ev:MouseEvent) => {
+        ev.preventDefault()
+        debug('click')
+        registerLocalIdentity()
+    }, [])
+
+    return html`<div>
+        <button onClick=${register}>
+            Register with webauthn
+        </button>
+    </div>`
 }
 
-render(html`<${Example} />`, document.getElementById('root')!)
+// const id = await registerLocalIdentity()
+// debug('id', id)
+
+document.addEventListener('DOMContentLoaded', () => {
+    render(html`<${Example} />`, document.getElementById('root')!)
+})
+

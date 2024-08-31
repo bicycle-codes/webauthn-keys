@@ -9,6 +9,13 @@
 
 A simple way to use crypto keys, protected by [webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric authentication).
 
+We need a way to save a user ID, then access it iff the user authenticates via `webauthn`. A user ID is an ECC keypair.
+
+We [save the `iv` of the our keypair](./src/index.ts#L46), which lets us re-create the same keypair on subsequent sessions.
+
+> [!NOTE]  
+> We are not using the [webcrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) for creating keys, because we are waiting on ECC support in all browsers.
+
 [See a live demo](https://bicycle-codes.github.io/webauthn-keys/)
 
 <!-- toc -->
@@ -52,3 +59,9 @@ cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-key
 ```html
 <script type="module" src="./webauth-keys.min.js"></script>
 ```
+
+## see also
+
+### `libsodium` docs
+
+* [How can I sign and encrypt using the same key pair?](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair)

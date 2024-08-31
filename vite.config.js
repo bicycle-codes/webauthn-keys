@@ -15,7 +15,9 @@ export default defineConfig({
             babel: {
                 sourceMaps: 'both'
             }
-        })
+        }),
+
+        // jsToBottomNoModule()
     ],
     // https://github.com/vitejs/vite/issues/8644#issuecomment-1159308803
     esbuild: {
@@ -41,3 +43,16 @@ export default defineConfig({
         sourcemap: 'inline'
     }
 })
+
+// function jsToBottomNoModule () {
+//     return {
+//         name: 'no-attribute',
+//         transformIndexHtml (html) {
+//             html = html.replace("type='module' crossorigin", '')
+//             const scriptTag = html.match(/<script[^>]*>(.*?)<\/script[^>]*>/)[0]
+//             html = html.replace(scriptTag, '')
+//             html = html.replace('<!-- # INSERT SCRIPT HERE -->', scriptTag)
+//             return html
+//         }
+//     }
+// }
