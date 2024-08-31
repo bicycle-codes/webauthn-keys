@@ -2,7 +2,7 @@ import store from '@lo-fi/client-storage/idb'
 import libsodium from 'libsodium-wrappers'
 import ASN1 from '@yoursunny/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
-import type { PassKeyPublicKey, Identity } from './types'
+import type { PassKeyPublicKey, Identity, JSONValue } from './types'
 import Debug from '@bicycle-codes/debug'
 const debug = Debug()
 
@@ -122,7 +122,7 @@ export async function checkRPID (rpIDHash, origRPID) {
     )
 }
 
-function fromUTF8String (val:string):Uint8Array {
+export function fromUTF8String (val:string):Uint8Array {
     return sodium.from_string(val)
 }
 
@@ -341,10 +341,26 @@ async function loadLocalIdentities ():Promise<Record<string, Identity>> {
     )
 }
 
-// function computePasskeyEntryHash (passkeyEntry:Passkey) {
-//     const { hash: _, ...passkey } = passkeyEntry
-//     return toBase64String(sodium.crypto_hash(JSON.stringify({
-//         ...passkey,
-//         publicKey: packPublicKeyJSON(passkey.publicKey),
-//     })))
-// }
+export function isByteArray (val:unknown):boolean {
+    return (val instanceof Uint8Array && val.buffer instanceof ArrayBuffer)
+}
+
+export function asBufferOrString (
+    data:Uint8Array|ArrayBuffer|string|JSONValue
+):Uint8Array|string {
+    if (data instanceof ArrayBuffer) {
+        return new Uint8Array(data)
+    }
+
+    if (isByteArray(data)) {
+        return (data as Uint8Array)
+    }
+
+    if (typeof data === 'object') {
+        // assume JSON serializable
+        return JSON.stringify(data)
+    }
+
+    // data must be a string
+    return String(data)
+}

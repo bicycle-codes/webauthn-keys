@@ -14,9 +14,10 @@ import {
     resetAbortReason,
     localIdentities,
     storeLocalIdentities,
-    pushLocalIdentity
+    pushLocalIdentity,
+    asBufferOrString
 } from './util'
-import type { Identity, RegistrationResult, LockKey } from './types'
+import type { Identity, RegistrationResult, LockKey, JSONValue } from './types'
 import * as cbor from 'cborg'
 const debug = createDebug()
 
@@ -30,15 +31,10 @@ const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES
 const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
 
 /**
- * simple
- * - can register a new user ID
- * - can get an existing keypair via webauthn auth
- * That means we need to store a collection of existing users.
- * This would be users that use this machine.
- *   This means a correlation between username & biometric auth.
+ * Create a new keypair.
+ * This registers a new identity via `webauthn`.
  */
-
-export async function registerLocalIdentity (
+export async function create (
     localID = toBase64String(generateEntropy(15)),
     lockKey = deriveLockKey(),
     _opts:Partial<{
@@ -273,46 +269,36 @@ async function register (regOptions:CredentialCreationOptions, opts:{
     return res!
 }
 
-// function cleanupExternalSignalHandler (token:AbortController) {
-//     // controller previously attached to an
-//     // external abort-signal?
-//     if (token !== null && externalSignalCache.has(token)) {
-//         const [prevExternalSignal, handlerFn] = externalSignalCache.get(token)
-//         prevExternalSignal.removeEventListener('abort', handlerFn)
-//         externalSignalCache.delete(token)
-//     }
-// }
+/**
+ * Find an existing keypair and return it.
+ */
+export async function getKeys (localID:string) {
+    const ids = await localIdentities()
+    return ids[localID]
+}
 
-// function resetAbortToken (
-//     abortToken:AbortController,
-//     externalSignal:AbortController
-// ) {
-//     // previous attempt still pending?
-//     if (abortToken) {
-//         cleanupExternalSignalHandler(abortToken)
+export function lockData (
+    data:JSONValue,
+    lockKey,
+    opts:{
+        outputFormat: 'base64'|'raw'
+    } = { outputFormat: 'base64' }
+):Uint8Array|string|null {  // return type depends on the given output format
+    const { outputFormat } = opts
 
-//         if (!abortToken.signal.aborted) {
-//             abortToken.abort('Passkey operation abandoned.')
-//         }
-//     }
-//     abortToken = new AbortController()
+    if (data == null) {
+        throw new Error('Non-empty data required.')
+    }
 
-//     // new external abort-signal passed in, to chain
-//     // off of?
-//     if (externalSignal !== null) {
-//         // signal already aborted?
-//         if (externalSignal.signal.aborted) {
-//             abortToken.abort(externalSignal.signal.reason)
-//         }
-//         // listen to future abort-signal
-//         else {
-//             let handlerFn = () => {
-//                 cleanupExternalSignalHandler(abortToken)
-//                 abortToken.abort(externalSignal.reason)
-//                 abortToken = externalSignal = handlerFn = null
-//             }
-//             externalSignal.addEventListener('abort', handlerFn)
-//             externalSignalCache.set(abortToken, [externalSignal, handlerFn,])
-//         }
-//     }
-// }
+    try {
+        const dataBuffer = asBufferOrString(data)
+        const encData = sodium.crypto_box_seal(dataBuffer, lockKey.encPK)
+
+        const output = ['base64', 'base-64'].includes(outputFormat.toLowerCase()) ?
+            toBase64String(encData) :
+            encData
+        return output
+    } catch (err) {
+        throw new Error('Data encryption failed.', { cause: err })
+    }
+}
