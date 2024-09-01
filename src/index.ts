@@ -299,11 +299,17 @@ export async function getKeys (
 // @ts-expect-error dev
 window.auth = auth
 
+interface AuthDefaults {
+    [credentialTypeKey]: 'publicKey';
+    allowCredentials;
+    publicKey: PublicKeyCredentialRequestOptions;
+}
+
 /**
  * Authenticate as an existing user.
  */
 async function auth (
-    opts:PublicKeyCredentialRequestOptions = authDefaults()
+    opts:AuthDefaults = authDefaults()
 ):Promise<AuthResult> {
     if (!supportsWebAuthn()) {
         throw new Error('no webauthn')
@@ -314,8 +320,9 @@ async function auth (
         normalizeCredentialsList(opts.allowCredentials)
     )
 
+    debug('opts over here', opts)
     const authResult = (await navigator.credentials.get({
-        publicKey: opts
+        publicKey: opts.publicKey
     }) as (PublicKeyCredential & {
         response:AuthenticatorAssertionResponse & { userHandle },
     })|null)
@@ -323,8 +330,11 @@ async function auth (
     debug('auth result', authResult)
     if (!authResult) throw new Error('not auth result')
 
+    debug('auth response client data', authResult.response.clientDataJSON)
+
     const authClientDataRaw = new Uint8Array(authResult.response.clientDataJSON)
     const authClientData = JSON.parse(toUTF8String(authClientDataRaw))
+    debug('parsed data', authClientData)
     if (authClientData.type !== 'webauthn.get') {
         throw new Error('Invalid auth response')
     }
@@ -415,7 +425,7 @@ window.authDefaults = authDefaults
 function authDefaults ({
     credentialType = 'publicKey',
     relyingPartyID = document.location.hostname,
-    userVerification = 'required',
+    userVerification = 'required' as UserVerificationRequirement,
     challenge = sodium.randombytes_buf(20),
     allowCredentials = [
         // { type: "public-key", id: ..., }
@@ -423,14 +433,18 @@ function authDefaults ({
     // mediation = 'optional',
     signal: cancelAuthSignal,
     ...otherOptions
-} = { signal: null }):PublicKeyCredentialRequestOptions {
+} = {
+    signal: null,
+}):AuthDefaults {
     const defaults = {
-        [credentialType]: {
+        publicKey: {
             rpId: relyingPartyID,
             userVerification,
             challenge,
             allowCredentials,
         },
+        [credentialTypeKey]: 'publicKey',
+        allowCredentials,
         // mediation,
         ...(cancelAuthSignal != null ? { signal: cancelAuthSignal, } : null),
         ...otherOptions
@@ -448,10 +462,12 @@ function authDefaults ({
         }
     )
 
-    return defaults[credentialType]
+    return defaults
 }
 
 function extractLockKey (authResult:AuthResult):LockKey {
+    debug('extracting the key', authResult)
+
     try {
         if (
             authResult &&
