@@ -15,9 +15,16 @@ import {
     localIdentities,
     storeLocalIdentities,
     pushLocalIdentity,
-    asBufferOrString
+    asBufferOrString,
+    isByteArray
 } from './util'
-import type { Identity, RegistrationResult, LockKey, JSONValue } from './types'
+import type {
+    Identity,
+    RegistrationResult,
+    LockKey,
+    JSONValue,
+    AuthResult
+} from './types'
 import * as cbor from 'cborg'
 const debug = createDebug()
 
@@ -35,7 +42,6 @@ const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
  * This registers a new identity via `webauthn`.
  */
 export async function create (
-    localID = toBase64String(generateEntropy(15)),
     lockKey = deriveLockKey(),
     _opts:Partial<{
         username:string
@@ -48,7 +54,7 @@ export async function create (
         relyingPartyID: document.location.hostname,
         relyingPartyName: 'wacg'
     }
-):Promise<{ record:Identity, keys }> {
+):Promise<{ localID:string, record:Identity, keys:LockKey }> {
     const abortToken = new AbortController()
     const opts = Object.assign({
         username: 'local-user',
@@ -58,10 +64,10 @@ export async function create (
     }, _opts)
     const { username, displayName, relyingPartyID, relyingPartyName } = opts
 
-    let result:{ record:Identity, keys }
+    let result:{ localID:string, record:Identity, keys:LockKey }
     try {
-        const identityRecord = (await localIdentities())[localID]
-        const lastSeq = ((identityRecord || {}).lastSeq || 0) + 1
+        const localID:string = toBase64String(generateEntropy(15))
+        const lastSeq:number = 0
 
         /**
          * @note
@@ -104,23 +110,26 @@ export async function create (
         // set the `iv` as userID here
         const registrationResult = await register(opts, { relyingPartyID })
 
-        if (registrationResult !== null) {
-            result = {
-                record: {
-                    lastSeq,
-                    passkeys: [
-                        buildPasskeyEntry({
-                            seq: lastSeq,
-                            credentialID: registrationResult.response.credentialID,
-                            publicKey: registrationResult.response.publicKey,
-                        }),
-                    ],
-                },
-                keys: lockKey,
-            }
-
-            await pushLocalIdentity(localID, result.record)
+        result = {
+            record: {
+                lastSeq,
+                passkeys: [
+                    buildPasskeyEntry({
+                        seq: lastSeq,
+                        credentialID: registrationResult.response.credentialID,
+                        publicKey: registrationResult.response.publicKey,
+                    }),
+                ],
+            },
+            localID,
+            keys: lockKey,
         }
+
+        /**
+         * Save the new ID to local storage
+         */
+        // await pushLocalIdentity(localID, result.record)
+        // return { [localID]: result }
     } catch (err) {
         throw new Error('Identity/Passkey registration failed', { cause: err })
     }
@@ -166,14 +175,13 @@ async function register (regOptions:CredentialCreationOptions, opts:{
             throw new Error('WebAuthentication not supported on this device')
         }
 
-        const regOpt = regOptions[credentialTypeKey]
+        const regOpt = regOptions[credentialTypeKey]  // 'publicKey'
         debug('reg opt', regOpt)
-        debug('reg opt exclude', regOpt.excludeCredentials)
 
         // ensure credential IDs are binary (not base64 string)
-        regOptions[regOptions[credentialTypeKey]].excludeCredentials = (
+        regOptions[regOpt].excludeCredentials = (
             normalizeCredentialsList(
-                regOptions[regOptions[credentialTypeKey]].excludeCredentials
+                regOptions[regOpt].excludeCredentials
             )
         )
 
@@ -181,9 +189,7 @@ async function register (regOptions:CredentialCreationOptions, opts:{
             .create(regOptions)) as PublicKeyCredential
 
         const response = regResult!.response as AuthenticatorAttestationResponse
-        const regClientDataRaw = new Uint8Array(
-            regResult!.response.clientDataJSON
-        )
+        const regClientDataRaw = new Uint8Array(response.clientDataJSON)
 
         const regClientData = JSON.parse(toUTF8String(regClientDataRaw))
         if (regClientData.type !== 'webauthn.create') {
@@ -269,21 +275,121 @@ async function register (regOptions:CredentialCreationOptions, opts:{
     return res!
 }
 
+// @ts-expect-error dev
+window.getKeys = getKeys
+
 /**
  * Find an existing keypair and return it.
  */
-export async function getKeys (localID:string) {
+export async function getKeys (
+    localID:string
+):Promise<{ record:Identity, keys:LockKey }> {
     const ids = await localIdentities()
-    return ids[localID]
+    const identityRecord = (await localIdentities())[localID]
+    if (!identityRecord) throw new Error("Can't find that identity")
+
+    const id = ids[localID]
+
+    const authRes = await auth(authDefaults())
+    const lockKey = extractLockKey(authRes)
+
+    return { record: id, keys: lockKey }
 }
 
-export function lockData (
+// @ts-expect-error dev
+window.auth = auth
+
+/**
+ * Authenticate as an existing user.
+ */
+async function auth (
+    opts:PublicKeyCredentialRequestOptions = authDefaults()
+):Promise<AuthResult> {
+    if (!supportsWebAuthn()) {
+        throw new Error('no webauthn')
+    }
+
+    // ensure credential IDs are binary (not base64 string)
+    opts.allowCredentials = (
+        normalizeCredentialsList(opts.allowCredentials)
+    )
+
+    const authResult = (await navigator.credentials.get({
+        publicKey: opts
+    }) as (PublicKeyCredential & {
+        response:AuthenticatorAssertionResponse & { userHandle },
+    })|null)
+
+    debug('auth result', authResult)
+    if (!authResult) throw new Error('not auth result')
+
+    const authClientDataRaw = new Uint8Array(authResult.response.clientDataJSON)
+    const authClientData = JSON.parse(toUTF8String(authClientDataRaw))
+    if (authClientData.type !== 'webauthn.get') {
+        throw new Error('Invalid auth response')
+    }
+
+    debug('opts', opts)
+    debug('credential type key', credentialTypeKey)
+    debug('opts cred type', opts[credentialTypeKey])
+
+    const expectedChallenge = sodium.to_base64(
+        opts[opts[credentialTypeKey]].challenge,
+        sodium.base64_variants.URLSAFE_NO_PADDING
+    )
+    if (authClientData.challenge !== expectedChallenge) {
+        throw new Error('Challenge not accepted')
+    }
+
+    const authDataRaw = new Uint8Array(
+        (authResult.response as AuthenticatorAssertionResponse).authenticatorData
+    )
+    const authData = parseAuthenticatorData(authDataRaw)
+    if (!checkRPID(authData.rpIdHash, opts.rpId)) {
+        throw new Error('Unexpected relying-party ID')
+    }
+
+    // // sign-count not supported by this authenticator?
+    // if (authData.signCount === 0) {
+    //     delete authData.signCount;
+    // }
+
+    const signatureRaw = new Uint8Array(
+        (authResult.response as AuthenticatorAssertionResponse).signature
+    )
+
+    return {
+        request: {
+            credentialType: authResult.type,
+            ...opts[opts[credentialTypeKey]],
+            ...(Object.fromEntries(
+                Object.entries(authClientData).filter(([key]) => (
+                    ['origin', 'crossOrigin',].includes(key)
+                ))
+            )),
+        },
+        response: {
+            credentialID: toBase64String(new Uint8Array(authResult.rawId)),
+            signature: signatureRaw,
+            ...(Object.fromEntries(
+                Object.entries(authData).filter(([key]) => (
+                    ['flags', 'signCount', 'userPresence',
+                        'userVerification',].includes(key)
+                ))
+            )),
+            ...({ userID: new Uint8Array(authResult.response.userHandle) }),
+            raw: authResult.response as AuthenticatorAssertionResponse,
+        },
+    }
+}
+
+export function encrypt (
     data:JSONValue,
-    lockKey,
+    lockKey:LockKey,
     opts:{
-        outputFormat: 'base64'|'raw'
+        outputFormat:'base64'|'raw'
     } = { outputFormat: 'base64' }
-):Uint8Array|string|null {  // return type depends on the given output format
+):Uint8Array|string {  // return type depends on the given output format
     const { outputFormat } = opts
 
     if (data == null) {
@@ -294,11 +400,73 @@ export function lockData (
         const dataBuffer = asBufferOrString(data)
         const encData = sodium.crypto_box_seal(dataBuffer, lockKey.encPK)
 
-        const output = ['base64', 'base-64'].includes(outputFormat.toLowerCase()) ?
+        const output = (outputFormat.toLowerCase() === 'base64') ?
             toBase64String(encData) :
             encData
         return output
     } catch (err) {
         throw new Error('Data encryption failed.', { cause: err })
+    }
+}
+
+// @ts-expect-error dev
+window.authDefaults = authDefaults
+
+function authDefaults ({
+    credentialType = 'publicKey',
+    relyingPartyID = document.location.hostname,
+    userVerification = 'required',
+    challenge = sodium.randombytes_buf(20),
+    allowCredentials = [
+        // { type: "public-key", id: ..., }
+    ],
+    // mediation = 'optional',
+    signal: cancelAuthSignal,
+    ...otherOptions
+} = { signal: null }):PublicKeyCredentialRequestOptions {
+    const defaults = {
+        [credentialType]: {
+            rpId: relyingPartyID,
+            userVerification,
+            challenge,
+            allowCredentials,
+        },
+        // mediation,
+        ...(cancelAuthSignal != null ? { signal: cancelAuthSignal, } : null),
+        ...otherOptions
+    }
+
+    // internal meta-data only
+    Object.defineProperty(
+        defaults,
+        credentialTypeKey,
+        {
+            enumerable: false,
+            writable: false,
+            configurable: false,
+            value: credentialType,
+        }
+    )
+
+    return defaults[credentialType]
+}
+
+function extractLockKey (authResult:AuthResult):LockKey {
+    try {
+        if (
+            authResult &&
+            authResult.response &&
+            isByteArray(authResult.response.userID) &&
+            authResult.response.userID.byteLength === (IV_BYTE_LENGTH + 2)
+        ) {
+            const lockKey = deriveLockKey(
+                authResult.response.userID.subarray(0, IV_BYTE_LENGTH)
+            )
+            return lockKey
+        } else {
+            throw new Error('Passkey info missing')
+        }
+    } catch (err) {
+        throw new Error('Chosen passkey did not provide a valid encryption/decryption key', { cause: err, })
     }
 }

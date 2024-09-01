@@ -20,8 +20,9 @@ export interface Identity {
 export type COSE = -8|-7|-37|-257
 
 export interface RegistrationResult {
-    request:any;
-    response: {
+    // request:any;
+    request:PublicKeyCredentialRequestOptions;
+    response:{
         credentialID:string;
         credentialType:PublicKeyCredential['type'];
         authenticatorAttachment:string|null;
@@ -33,6 +34,16 @@ export interface RegistrationResult {
         },
         raw:AuthenticatorResponse;
     };
+}
+
+export interface AuthResult {
+    request:PublicKeyCredentialRequestOptions;
+    response:{
+        credentialID:string;
+        signature:Uint8Array;
+        userID:Uint8Array;
+        raw:AuthenticatorAssertionResponse;
+    }
 }
 
 export interface LockKey {

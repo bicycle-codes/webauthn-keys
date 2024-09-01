@@ -7,6 +7,9 @@ import type { Identity } from '../src/types'
 import {
     create,
     localIdentities,
+    pushLocalIdentity,
+    getKeys,
+    // encrypt
 } from '../src/index.js'
 const debug = Debug()
 
@@ -31,15 +34,22 @@ const Example:FunctionComponent = function () {
         const els = form.elements
         const username = (els['username'] as HTMLInputElement).value
         debug('click', username)
-        const id = await create(undefined, undefined, {
+        const id = await create(undefined, {
             username
         })
         debug('id', id)
+        await pushLocalIdentity(id.localID, id.record)
+        const newState = { ...localIds, [id.localID]: id.record }
+        setLocalIds(newState)
     }, [])
 
-    const storeThem = useCallback((ev:MouseEvent) => {
+    const login = useCallback(async (ev:MouseEvent) => {
         ev.preventDefault()
-        debug('store the identities')
+        const localID = (ev.target as HTMLButtonElement).dataset.localId
+        debug('login with this ID', localID)
+        const { record, keys } = await getKeys(localID!)
+        debug('user record', record)
+        debug('key', keys)
     }, [])
 
     return html`<div class="webauthn-keys-demo">
@@ -63,10 +73,6 @@ const Example:FunctionComponent = function () {
                                     Register with webauthn
                                 </button>
                             </div>
-
-                            <div>
-                                <button onClick=${storeThem}>store them</button>
-                            </div>
                         </form>
                     ` :
                     null
@@ -85,12 +91,6 @@ const Example:FunctionComponent = function () {
                         <div>
                             <button onClick=${() => setStep('create')}>
                                 Create a new identity
-                            </button>
-                        </div>
-
-                        <div>
-                            <button onClick=${() => setStep('login')}>
-                                Login with an existing identity
                             </button>
                         </div>
                     </form>` :
@@ -119,19 +119,23 @@ const Example:FunctionComponent = function () {
                                                 return val.slice(0, 6)
                                             }
 
-                                            debug('json value', k, val)
-
                                             if (k === 'raw') {
                                                 return val.slice(0, 6)
                                             }
                                             return val
                                         }, 2)}
                                     </pre>
+
+                                    <p>
+                                        <button onClick=${login} data-local-id=${k}>
+                                            Login as this user
+                                        </button>
+                                    </p>
                                 </li>`
                             })}
                         </ul>
                     ` :
-                    null
+                    html`<em>none</em>`
                 }
             </div>
         </section>
