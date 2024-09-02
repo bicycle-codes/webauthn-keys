@@ -1,6 +1,6 @@
 import store from '@lo-fi/client-storage/idb'
 import libsodium from 'libsodium-wrappers'
-import ASN1 from '@yoursunny/asn1'
+import { ASN1, type ASN1Data } from '@bicycle-codes/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
 import type { PassKeyPublicKey, Identity, JSONValue } from './types'
 import Debug from '@bicycle-codes/debug'
@@ -25,7 +25,9 @@ export async function supportsWebAuthn () {
     )
 }
 
-export function normalizeCredentialsList (credList) {
+export function normalizeCredentialsList (
+    credList:(any & { id:string|Uint8Array })[]
+):(any & { id:Uint8Array })[]|undefined {
     if (Array.isArray(credList)) {
         return credList.map(entry => ({
             ...entry,
@@ -62,7 +64,7 @@ export function parsePublicKeySPKI (publicKeySPKI:Uint8Array):{
     }
 }
 
-function findValue (node:ASN1.ElementBuffer):Uint8Array|null {
+function findValue (node:ASN1Data):Uint8Array|null {
     if (node.value && node.value instanceof Uint8Array) {
         return node.value
     } else if (node.children) {
@@ -90,7 +92,13 @@ function findValue (node:ASN1.ElementBuffer):Uint8Array|null {
  * Bit 7, Extension Data (ED)
  * 4 bytes: signCount (0 means disabled)
  */
-export function parseAuthenticatorData (authData:Uint8Array) {
+export function parseAuthenticatorData (authData:Uint8Array):{
+    rpIdHash:Uint8Array;
+    flags:number;
+    userPresence:boolean;
+    userVerification:boolean;
+    signCount?:number;
+} {
     return {
         rpIdHash: authData.slice(0, 32),
         flags: authData[32],

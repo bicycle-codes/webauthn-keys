@@ -1,16 +1,18 @@
 import { type FunctionComponent, render } from 'preact'
-import { useCallback, useState, useMemo } from 'preact/hooks'
+import { useCallback, useMemo } from 'preact/hooks'
+import { useSignal } from '@preact/signals'
 import { html } from 'htm/preact'
-import './style.css'
 import Debug from '@bicycle-codes/debug'
-import type { Identity } from '../src/types'
+import { toString } from 'uint8arrays'
+import type { Identity, LockKey } from '../src/types'
 import {
     create,
     localIdentities,
     pushLocalIdentity,
     getKeys,
-    // encrypt
+    encrypt
 } from '../src/index.js'
+import './style.css'
 const debug = Debug()
 
 debug('local ids', await localIdentities())
@@ -19,13 +21,14 @@ debug('local ids', await localIdentities())
 window.loadLocals = localIdentities
 
 const Example:FunctionComponent = function () {
-    const [step, setStep] = useState<'create'|'login'|null>(null)
-    const [localIds, setLocalIds] = useState<Record<string, Identity>|null>(null)
+    const currentStep = useSignal<'create'|'logged-in'|null>(null)
+    const localIds = useSignal<Record<string, Identity>|null>(null)
+    const myKeys = useSignal<LockKey|null>(null)
 
     useMemo(async () => {
         const ids = await localIdentities()
         if (!ids) return
-        setLocalIds(ids)
+        localIds.value = ids
     }, [])
 
     const register = useCallback(async (ev:SubmitEvent) => {
@@ -39,8 +42,8 @@ const Example:FunctionComponent = function () {
         })
         debug('id', id)
         await pushLocalIdentity(id.localID, id.record)
-        const newState = { ...localIds, [id.localID]: id.record }
-        setLocalIds(newState)
+        const newState = { ...localIds.value, [id.localID]: id.record }
+        localIds.value = newState
     }, [])
 
     const login = useCallback(async (ev:MouseEvent) => {
@@ -49,7 +52,9 @@ const Example:FunctionComponent = function () {
         debug('login with this ID', localID)
         const { record, keys } = await getKeys(localID!)
         debug('user record', record)
-        debug('key', keys)
+        debug('these are the keys', keys)
+        myKeys.value = keys
+        currentStep.value = 'logged-in'
     }, [])
 
     return html`<div class="webauthn-keys-demo">
@@ -57,7 +62,7 @@ const Example:FunctionComponent = function () {
 
         <section class="main">
             <div class="action">
-                ${step === 'create' ?
+                ${currentStep.value === 'create' ?
                     html`
                         <h2>Create a new identity</h2>
                         <form class="register" onSubmit=${register}>
@@ -78,18 +83,46 @@ const Example:FunctionComponent = function () {
                     null
                 }
 
-                ${step === 'login' ?
-                    html`<h2>Login</h2>
+                ${currentStep.value === 'logged-in' ?
+                    html`<div class="logged-in">
+                        <h2>Your keys</h2>
+                        <div class="keys">
+                            <pre>
+                                ${JSON.stringify(myKeys.value, (k, val) => {
+                                    if (
+                                        k === 'iv' ||
+                                        k === 'publicKey' ||
+                                        k === 'privateKey' ||
+                                        k === 'encPK' ||
+                                        k === 'encSK'
+                                    ) {
+                                        // return val.slice(0, 6)
+                                        return toString(val, 'base64')
+                                    }
+
+                                    return val
+                                }, 2)}
+                            </pre>
+                        </div>
+
                         <form>
+                            <h2>Encrypt a message</h2>
+                            <form>
+                                <textarea
+                                    name="text"
+                                    placeholder="Message here"
+                                    id="text"
+                                ><//>
+                            </form>
                         </form>
-                    ` :
+                    </div>` :
                     null
                 }
 
-                ${step === null ?
+                ${currentStep.value === null ?
                     html`<form class="choose-your-path">
                         <div>
-                            <button onClick=${() => setStep('create')}>
+                            <button onClick=${() => (currentStep.value = 'create')}>
                                 Create a new identity
                             </button>
                         </div>
@@ -103,11 +136,11 @@ const Example:FunctionComponent = function () {
                 <p>
                     The key is the user's ID.
                 </p>
-                ${localIds ?
+                ${localIds.value ?
                     html`
                         <ul>
-                            ${Object.keys(localIds).map(k => {
-                                const id = localIds[k]
+                            ${Object.keys(localIds.value).map(k => {
+                                const id = localIds.value![k]
 
                                 return html`<li class="id">
                                     <pre><b>key: </b>${k}</pre>

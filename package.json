@@ -26,10 +26,12 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@bicycle-codes/asn1": "^0.0.4",
     "@lo-fi/client-storage": "^0.10.0",
     "@lo-fi/local-data-lock": "^0.13.1",
     "@lo-fi/local-vault": "^0.14.0",
     "@lo-fi/webauthn-local-client": "^0.999.7",
+    "@preact/signals": "^1.3.0",
     "@yoursunny/asn1": "^0.0.20200718",
     "cbor-js": "^0.1.0",
     "cborg": "^4.2.3",
@@ -56,6 +58,7 @@
     "tape-run": "^11.0.0",
     "typedoc": "^0.26.4",
     "typescript": "^5.4.5",
+    "uint8arrays": "^5.1.0",
     "vite": "^5.3.3"
   },
   "exports": {

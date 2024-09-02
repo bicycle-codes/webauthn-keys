@@ -25,10 +25,15 @@ import type {
     JSONValue,
     AuthResult
 } from './types'
-import * as cbor from 'cborg'
+import { decode as cborDecode } from 'cborg'
 const debug = createDebug()
 
-export { localIdentities, storeLocalIdentities, pushLocalIdentity }
+export {
+    localIdentities,
+    storeLocalIdentities,
+    pushLocalIdentity,
+    toBase64String
+}
 
 await libsodium.ready
 const sodium = libsodium
@@ -214,7 +219,7 @@ async function register (regOptions:CredentialCreationOptions, opts:{
             typeof response.getAuthenticatorData !== 'undefined' ?
                 (new Uint8Array(response.getAuthenticatorData())) :
 
-                cbor.decode(
+                cborDecode(
                     new Uint8Array(response.attestationObject)
                 ).authData
         )
@@ -300,9 +305,9 @@ export async function getKeys (
 window.auth = auth
 
 interface AuthDefaults {
-    [credentialTypeKey]: 'publicKey';
+    [credentialTypeKey]:string;
     allowCredentials;
-    publicKey: PublicKeyCredentialRequestOptions;
+    publicKey:PublicKeyCredentialRequestOptions;
 }
 
 /**
@@ -343,8 +348,10 @@ async function auth (
     debug('credential type key', credentialTypeKey)
     debug('opts cred type', opts[credentialTypeKey])
 
+    const req = opts[opts[credentialTypeKey]]
+
     const expectedChallenge = sodium.to_base64(
-        opts[opts[credentialTypeKey]].challenge,
+        new Uint8Array(req.challenge),
         sodium.base64_variants.URLSAFE_NO_PADDING
     )
     if (authClientData.challenge !== expectedChallenge) {
@@ -355,14 +362,14 @@ async function auth (
         (authResult.response as AuthenticatorAssertionResponse).authenticatorData
     )
     const authData = parseAuthenticatorData(authDataRaw)
-    if (!checkRPID(authData.rpIdHash, opts.rpId)) {
+    if (!checkRPID(authData.rpIdHash, req.rpId)) {
         throw new Error('Unexpected relying-party ID')
     }
 
-    // // sign-count not supported by this authenticator?
-    // if (authData.signCount === 0) {
-    //     delete authData.signCount;
-    // }
+    // sign-count not supported by this authenticator?
+    if (authData.signCount === 0) {
+        delete authData.signCount
+    }
 
     const signatureRaw = new Uint8Array(
         (authResult.response as AuthenticatorAssertionResponse).signature
