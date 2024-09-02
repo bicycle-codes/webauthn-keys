@@ -30,7 +30,7 @@
     "@lo-fi/client-storage": "^0.10.0",
     "@lo-fi/local-data-lock": "^0.13.1",
     "@lo-fi/local-vault": "^0.14.0",
-    "@lo-fi/webauthn-local-client": "^0.999.7",
+    "@lo-fi/webauthn-local-client": "^0.1000.2",
     "@preact/signals": "^1.3.0",
     "@yoursunny/asn1": "^0.0.20200718",
     "cbor-js": "^0.1.0",
