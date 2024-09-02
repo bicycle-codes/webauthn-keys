@@ -58,7 +58,6 @@
     "tape-run": "^11.0.0",
     "typedoc": "^0.26.4",
     "typescript": "^5.4.5",
-    "uint8arrays": "^5.1.0",
     "vite": "^5.3.3"
   },
   "exports": {

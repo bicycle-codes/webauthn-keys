@@ -16,7 +16,8 @@ import {
     storeLocalIdentities,
     pushLocalIdentity,
     asBufferOrString,
-    isByteArray
+    isByteArray,
+    fromBase64String
 } from './util'
 import type {
     Identity,
@@ -32,7 +33,8 @@ export {
     localIdentities,
     storeLocalIdentities,
     pushLocalIdentity,
-    toBase64String
+    toBase64String,
+    fromBase64String
 }
 
 await libsodium.ready
@@ -400,13 +402,76 @@ async function auth (
     }
 }
 
+/**
+ * If called with { parseJSON: false }, will return
+ * a string.
+ *
+ * If called with { outputFormat: 'raw' }, will return
+ * a Uint8Array.
+ */
+export function decrypt (
+    data:string|Uint8Array,
+    lockKey:LockKey,
+    { outputFormat }:{
+        outputFormat:'raw'
+    }
+):Uint8Array
+export function decrypt (
+    data:string|Uint8Array,
+    lockKey:LockKey,
+    { outputFormat, parseJSON }:{
+        outputFormat?:'utf8',
+        parseJSON:false
+    }
+):string
+export function decrypt (
+    data:string|Uint8Array,
+    lockKey:LockKey,
+    { outputFormat, parseJSON }:{
+        outputFormat?:'utf8',
+        parseJSON?:true
+    }
+):JSONValue
+export function decrypt (
+    data:string|Uint8Array,
+    lockKey:LockKey,
+    opts:{ outputFormat?:'utf8'|'raw', parseJSON?:boolean } = {
+        outputFormat: 'utf8',
+        parseJSON: true
+    }
+):string|Uint8Array|JSONValue {
+    const outputFormat = opts.outputFormat || 'utf8'
+    const parseJSON = opts.parseJSON ?? true
+
+    const dataBuffer = sodium.crypto_box_seal_open(
+        typeof data === 'string' ? fromBase64String(data) : data,
+        lockKey.encPK,
+        lockKey.encSK
+    )
+
+    if (outputFormat === 'utf8') {
+        const decodedData = toUTF8String(dataBuffer)
+        return (parseJSON ? JSON.parse(decodedData) : decodedData)
+    }
+
+    return dataBuffer
+}
+
+export function encrypt (data:JSONValue, lockKey):string
+export function encrypt (data:JSONValue, lockKey, { outputFormat }:{
+    outputFormat:'base64'
+}):string
+export function encrypt (data:JSONValue, lockKey, { outputFormat }:{
+    outputFormat:'raw'
+}):Uint8Array
 export function encrypt (
     data:JSONValue,
     lockKey:LockKey,
     opts:{
-        outputFormat:'base64'|'raw'
+        outputFormat:'base64'|'raw';
     } = { outputFormat: 'base64' }
-):Uint8Array|string {  // return type depends on the given output format
+// return type depends on the given output format
+):string|Uint8Array {
     const { outputFormat } = opts
 
     if (data == null) {

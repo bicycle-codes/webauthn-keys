@@ -2,6 +2,11 @@ body {
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }
 
+button {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
 h1 {
     font-size: 1.4rem;
     border-bottom: 2px solid;
@@ -27,13 +32,35 @@ h2 {
     }
 }
 
+.encrypted-text, .decrypted-text {
+    border: 1px solid;
+    padding: 1rem;
+    line-break: anywhere;
+    margin: 1rem auto;
+}
+
+.decrypted-text {
+    line-break: normal;
+}
+
 .main {
     display: flex;
     justify-content: space-between;
     flex-direction: row;
     gap: 1rem;
 
-    & .action, & .saved {
+    & .action {
+        & label {
+            display: block;
+        }
+
+        & textarea {
+            width: 100%;
+            min-height: 6rem;
+        }
+    }
+
+    & .action, & .right {
         width: 50%;
     }
 }
@@ -54,9 +81,4 @@ form {
     & div {
         margin-bottom: 1rem;
     }
-}
-
-button {
-    padding: 0.5rem 1rem;
-    cursor: pointer;
 }

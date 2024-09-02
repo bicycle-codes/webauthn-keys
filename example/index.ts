@@ -3,14 +3,15 @@ import { useCallback, useMemo } from 'preact/hooks'
 import { useSignal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@bicycle-codes/debug'
-import { toString } from 'uint8arrays'
 import type { Identity, LockKey } from '../src/types'
 import {
+    toBase64String,
     create,
     localIdentities,
     pushLocalIdentity,
     getKeys,
-    encrypt
+    encrypt,
+    decrypt
 } from '../src/index.js'
 import './style.css'
 const debug = Debug()
@@ -24,6 +25,16 @@ const Example:FunctionComponent = function () {
     const currentStep = useSignal<'create'|'logged-in'|null>(null)
     const localIds = useSignal<Record<string, Identity>|null>(null)
     const myKeys = useSignal<LockKey|null>(null)
+    const encryptedText = useSignal<string|null>(null)
+    const decryptedText = useSignal<string|null>(null)
+
+    if (import.meta.env.DEV) {
+        // @ts-expect-error dev
+        window.state = {
+            myKeys,
+            encryptedText
+        }
+    }
 
     useMemo(async () => {
         const ids = await localIdentities()
@@ -55,6 +66,28 @@ const Example:FunctionComponent = function () {
         debug('these are the keys', keys)
         myKeys.value = keys
         currentStep.value = 'logged-in'
+    }, [])
+
+    const encryptMsg = useCallback((ev:SubmitEvent) => {
+        ev.preventDefault()
+        if (!myKeys.value) throw new Error('not keys')
+        const form = ev.target as HTMLFormElement
+        const text = form.elements['text'].value
+        debug('encrypting...', text.value)
+        const encrypted = encrypt(text, myKeys.value)
+        debug('the encrypted text', encrypted)
+        encryptedText.value = encrypted
+    }, [])
+
+    const decryptMsg = useCallback((ev:MouseEvent) => {
+        ev.preventDefault()
+        if (!myKeys.value) throw new Error('not keys')
+        const msg = encryptedText.value!
+        const decrypted = decrypt(msg, myKeys.value, {
+            parseJSON: false
+        })
+
+        decryptedText.value = decrypted
     }, [])
 
     return html`<div class="webauthn-keys-demo">
@@ -96,8 +129,7 @@ const Example:FunctionComponent = function () {
                                         k === 'encPK' ||
                                         k === 'encSK'
                                     ) {
-                                        // return val.slice(0, 6)
-                                        return toString(val, 'base64')
+                                        return toBase64String(val)
                                     }
 
                                     return val
@@ -105,15 +137,18 @@ const Example:FunctionComponent = function () {
                             </pre>
                         </div>
 
-                        <form>
-                            <h2>Encrypt a message</h2>
-                            <form>
-                                <textarea
-                                    name="text"
-                                    placeholder="Message here"
-                                    id="text"
-                                ><//>
-                            </form>
+                        <h2>Encrypt a message</h2>
+                        <form onSubmit=${encryptMsg}>
+                            <label for="text">
+                                Your message
+                            <//>
+                            <textarea
+                                name="text"
+                                placeholder="Message here"
+                                id="text"
+                            ><//>
+
+                            <button type="submit">Encrypt<//>
                         </form>
                     </div>` :
                     null
@@ -131,44 +166,65 @@ const Example:FunctionComponent = function () {
                 }
             </div> <!-- /.action -->
 
-            <div class="saved">
-                <h2>Existing identities</h2>
-                <p>
-                    The key is the user's ID.
-                </p>
-                ${localIds.value ?
+            <div class="right">
+                ${!currentStep.value ?
                     html`
-                        <ul>
-                            ${Object.keys(localIds.value).map(k => {
-                                const id = localIds.value![k]
+                        <h2>Existing identities</h2>
+                        <p>
+                            The key is the user's ID.
+                        </p>
+                        ${localIds.value ?
+                            html`
+                                <ul>
+                                    ${Object.keys(localIds.value).map(k => {
+                                        const id = localIds.value![k]
 
-                                return html`<li class="id">
-                                    <pre><b>key: </b>${k}</pre>
-                                    <pre>
-                                        <b>value</b>:
-                                        <br />
-                                        ${JSON.stringify(id, (k, val) => {
-                                            if (k === 'spki') {
-                                                return val.slice(0, 6)
-                                            }
+                                        return html`<li class="id">
+                                            <pre><b>key: </b>${k}</pre>
+                                            <pre>
+                                                <b>value</b>:
+                                                <br />
+                                                ${JSON.stringify(id, (k, val) => {
+                                                    if (k === 'spki' || k === 'raw') {
+                                                        return toBase64String(val)
+                                                    }
+                                                    return val
+                                                }, 2)}
+                                            </pre>
 
-                                            if (k === 'raw') {
-                                                return val.slice(0, 6)
-                                            }
-                                            return val
-                                        }, 2)}
-                                    </pre>
-
-                                    <p>
-                                        <button onClick=${login} data-local-id=${k}>
-                                            Login as this user
-                                        </button>
-                                    </p>
-                                </li>`
-                            })}
-                        </ul>
+                                            <p>
+                                                <button onClick=${login} data-local-id=${k}>
+                                                    Login as this user
+                                                </button>
+                                            </p>
+                                        </li>`
+                                    })}
+                                </ul>
+                            ` :
+                            html`<em>none</em>`
+                        }
                     ` :
-                    html`<em>none</em>`
+                    html`<div class="the-message">
+                        <h2>data<//>
+                        ${encryptedText.value ?
+                            html`<div class="encrypted-text">
+                                <h2>The encrypted text<//>
+                                <p>${encryptedText}<//>
+                            <//>
+                            <div class="controls">
+                                <button onClick=${decryptMsg}>Decrypt</button>
+                            <//>` :
+                            html`<em>none</em>`
+                        }
+
+                        ${decryptedText.value ?
+                            html`<div class="decrypted-text">
+                                <h2>The decrypted text<//>
+                                <p>${decryptedText}</p>
+                            </div>` :
+                            null
+                        }
+                    <//>`
                 }
             </div>
         </section>
