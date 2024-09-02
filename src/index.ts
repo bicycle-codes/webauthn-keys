@@ -446,6 +446,43 @@ export function decrypt (
     return dataBuffer
 }
 
+export async function signData (
+    data:string|Uint8Array,
+    key:LockKey
+):Promise<string>
+
+export async function signData (data:string|Uint8Array, key:LockKey, opts:{
+    outputFormat:'raw'
+}):Promise<Uint8Array>
+
+/**
+ * Sign the given data.
+ * @param data The data to sign.
+ * @param key The keys to use
+ * @param opts Can specify 'raw' as `outputFormat`, which will return
+ * a `Uint8Array` instead of a string.
+ * @returns {string|Uint8Array} String or binary, depending on `opts`
+ */
+export async function signData (
+    data:string|Uint8Array,
+    key:LockKey,
+    opts?:{
+        outputFormat?:'base64'|'raw'
+    }
+):Promise<string|Uint8Array> {
+    await libsodium.ready
+    const sodium = libsodium
+
+    const outputFormat = opts?.outputFormat || 'base64'
+
+    const sig = sodium.crypto_sign_detached(
+        data,
+        key.privateKey
+    )
+
+    return outputFormat === 'base64' ? toBase64String(sig) : sig
+}
+
 export function encrypt (data:JSONValue, lockKey):string
 export function encrypt (data:JSONValue, lockKey, { outputFormat }:{
     outputFormat:'base64'
