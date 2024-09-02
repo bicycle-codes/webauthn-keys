@@ -1,4 +1,4 @@
-import store from '@lo-fi/client-storage/idb'
+import { del, get, set } from 'idb-keyval'
 import libsodium from 'libsodium-wrappers'
 import { ASN1, type ASN1Data } from '@bicycle-codes/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
@@ -293,17 +293,15 @@ export async function storeLocalIdentities (_identities:Record<string, Identity>
             ]))
     )
 
-    debug('identities...', identities)
-
     if (Object.keys(identities).length > 0) {
-        await store.set('local-identities', identities)
+        await set('local-identities', identities)
     } else {
-        await store.remove('local-identities')
+        await del('local-identities')
     }
 }
 
 async function loadLocalIdentities ():Promise<Record<string, Identity>> {
-    const localIds = await store.get('local-identities') || {}
+    const localIds = await get('local-identities') || {}
     debug('local ids', localIds)
 
     return (

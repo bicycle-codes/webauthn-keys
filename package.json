@@ -1,23 +1,27 @@
 {
-  "private": true,
-  "type": "module",
+  "name": "@bicycle-codes/webauthn-keys",
   "version": "0.0.0",
+  "description": "Use ECC keys with the webauthn API",
+  "type": "module",
+  "directories": {
+    "doc": "docs",
+    "example": "example",
+    "test": "test"
+  },
   "main": "dist/index.js",
   "files": [
     "./dist/*"
   ],
+  "types": "./dist/index.d.ts",
   "scripts": {
     "lint": "eslint \"./**/*.{ts,js}\"",
     "build-tests": "esbuild test/index.ts --target=es2020 --bundle --keep-names > test/test-bundle.js",
-    "test": "npm run lint && npm run build && npm run build-tests && npm run test-tape-run",
-    "test-tape-run": "cat test/index.html | tape-run --input=html --static=test | tap-spec",
-    "build-cjs": "esbuild src/*.ts --format=cjs --keep-names --tsconfig=tsconfig.build.json --outdir=./dist --out-extension:.js=.cjs --sourcemap",
-    "build-cjs:min": "esbuild src/*.ts --format=cjs --minify --keep-names --tsconfig=tsconfig.build.json --outdir=./dist --out-extension:.js=.min.cjs --sourcemap",
+    "test": "npm run build && esbuild ./test/index.ts --platform=node --format=esm | node --input-type=module | tap-spec",
     "build-esm": "esbuild src/*.ts --format=esm --metafile=dist/meta.json --keep-names --tsconfig=tsconfig.build.json --outdir=./dist --sourcemap && tsc --emitDeclarationOnly --project tsconfig.build.json --outDir dist",
     "build-esm:min": "esbuild ./src/*.ts --format=esm --keep-names --bundle --tsconfig=tsconfig.build.json --minify --out-extension:.js=.min.js --outdir=./dist --sourcemap",
     "build-example": "mkdir -p ./public && rm -rf ./public/* && VITE_DEBUG_MODE=staging vite --mode staging --base=\"/repo-name\" build",
     "build-docs": "typedoc ./src/index.ts",
-    "build": "mkdir -p ./dist && rm -rf ./dist/* && npm run build-cjs && npm run build-esm && npm run build-esm:min && npm run build-cjs:min",
+    "build": "mkdir -p ./dist && rm -rf ./dist/* && npm run build-esm && npm run build-esm:min",
     "start": "vite",
     "preversion": "npm run lint",
     "toc": "markdown-toc --maxdepth 3 -i README.md",
@@ -27,15 +31,8 @@
   },
   "dependencies": {
     "@bicycle-codes/asn1": "^0.0.4",
-    "@lo-fi/client-storage": "^0.10.0",
-    "@lo-fi/local-data-lock": "^0.13.1",
-    "@lo-fi/local-vault": "^0.14.0",
-    "@lo-fi/webauthn-local-client": "^0.999.7",
-    "@preact/signals": "^1.3.0",
-    "@yoursunny/asn1": "^0.0.20200718",
-    "cbor-js": "^0.1.0",
     "cborg": "^4.2.3",
-    "idb": "^8.0.0",
+    "idb-keyval": "^6.2.1",
     "libsodium": "^0.7.15",
     "libsodium-wrappers": "^0.7.15"
   },
@@ -43,6 +40,7 @@
     "@bicycle-codes/debug": "^0.6.13",
     "@bicycle-codes/tapzero": "^0.10.3",
     "@preact/preset-vite": "^2.9.0",
+    "@preact/signals": "^1.3.0",
     "@types/libsodium-wrappers": "^0.7.14",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
@@ -55,27 +53,30 @@
     "postcss-nesting": "^13.0.0",
     "preact": "^10.22.1",
     "tap-spec": "^5.0.0",
-    "tape-run": "^11.0.0",
     "typedoc": "^0.26.4",
     "typescript": "^5.4.5",
     "vite": "^5.3.3"
   },
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./*": {
-      "import": [
-        "./dist/*.js",
-        "./dist/*"
-      ],
-      "require": [
-        "./dist/*.cjs",
-        "./dist/*"
-      ]
-    }
+    ".": "./dist/index.js",
+    "./*": [
+      "./dist/*.js",
+      "./dist/*"
+    ]
   },
   "author": "nichoth <nichoth@nichoth.com> (https://nichoth.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bicycle-codes/webauthn-keys.git"
+  },
+  "keywords": [
+    "webauthn",
+    "keys",
+    "crypto"
+  ],
+  "bugs": {
+    "url": "https://github.com/bicycle-codes/webauthn-keys/issues"
+  },
+  "homepage": "https://github.com/bicycle-codes/webauthn-keys",
   "license": "MIT"
 }

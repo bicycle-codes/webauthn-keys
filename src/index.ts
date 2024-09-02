@@ -29,6 +29,8 @@ import type {
 import { decode as cborDecode } from 'cborg'
 const debug = createDebug()
 
+export type * from './types'
+
 export {
     localIdentities,
     storeLocalIdentities,
@@ -131,12 +133,6 @@ export async function create (
             localID,
             keys: lockKey,
         }
-
-        /**
-         * Save the new ID to local storage
-         */
-        // await pushLocalIdentity(localID, result.record)
-        // return { [localID]: result }
     } catch (err) {
         throw new Error('Identity/Passkey registration failed', { cause: err })
     }
@@ -144,7 +140,7 @@ export async function create (
     return result!
 }
 
-function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
+export function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
     try {
         const ed25519KeyPair = sodium.crypto_sign_seed_keypair(iv)
 
@@ -183,7 +179,6 @@ async function register (regOptions:CredentialCreationOptions, opts:{
         }
 
         const regOpt = regOptions[credentialTypeKey]  // 'publicKey'
-        debug('reg opt', regOpt)
 
         // ensure credential IDs are binary (not base64 string)
         regOptions[regOpt].excludeCredentials = (
@@ -282,9 +277,6 @@ async function register (regOptions:CredentialCreationOptions, opts:{
     return res!
 }
 
-// @ts-expect-error dev
-window.getKeys = getKeys
-
 /**
  * Find an existing keypair and return it.
  */
@@ -302,9 +294,6 @@ export async function getKeys (
 
     return { record: id, keys: lockKey }
 }
-
-// @ts-expect-error dev
-window.auth = auth
 
 interface AuthDefaults {
     [credentialTypeKey]:string;

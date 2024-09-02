@@ -1,7 +1,8 @@
 import { test } from '@bicycle-codes/tapzero'
-import { example } from '../src/index.js'
+import { deriveLockKey } from '../dist/index.js'
 
-test('example', async t => {
-    t.ok('ok', 'should be an example')
-    example()
+test('derive a new key', async t => {
+    const keys = await deriveLockKey()
+
+    t.ok(keys.publicKey, 'should return a keypair')
 })
