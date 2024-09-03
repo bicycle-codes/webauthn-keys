@@ -402,7 +402,7 @@ export function decrypt (
     data:string|Uint8Array,
     lockKey:LockKey,
     { outputFormat }:{
-        outputFormat:'raw'
+        outputFormat?:'raw'
     }
 ):Uint8Array
 export function decrypt (
@@ -444,6 +444,27 @@ export function decrypt (
     }
 
     return dataBuffer
+}
+
+export async function verify (
+    data:string|Uint8Array,
+    sig:string|Uint8Array,
+    keys:LockKey
+):Promise<boolean> {
+    await libsodium.ready
+    const sodium = libsodium
+
+    try {
+        const isOk = sodium.crypto_sign_verify_detached(
+            typeof sig === 'string' ? fromBase64String(sig) : sig,
+            asBufferOrString(data),
+            keys.publicKey
+        )
+
+        return isOk
+    } catch (_err) {
+        return false
+    }
 }
 
 export async function signData (
