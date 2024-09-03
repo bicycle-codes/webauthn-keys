@@ -49,7 +49,8 @@ const Example:FunctionComponent = function () {
         const username = (els['username'] as HTMLInputElement).value
         debug('click', username)
         const id = await create(undefined, {
-            username
+            username,
+            relyingPartyName: 'Example application'
         })
         debug('id', id)
         await pushLocalIdentity(id.localID, id.record)

@@ -31,10 +31,10 @@ The secret `iv` is set in the `user.id` property in a [PublicKeyCredentialCreati
 > We are not using the [webcrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) for creating keys, because we are waiting on ECC support in all browsers.
 
 > [!NOTE]  
-> [We only need 1 keypair](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair) for both signing and encrypting.
+> [We only need 1 keypair](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair) for both signing and encrypting. Internally, we create 2 keypairs -- one for signing and one for encryption, but this is hidden from the interface.
 
 ## Use
-This exposes ESM and common JS via [package.json `exports` field](https://nodejs.org/api/packages.html#exports).
+This exposes ESM via [package.json `exports` field](https://nodejs.org/api/packages.html#exports).
 
 ### ESM
 ```js
@@ -60,18 +60,6 @@ import type {
 } from '@bicycle-codes/webauthn-keys'
 ```
 
-### Common JS
-```js
-const keys = require('@bicycle-codes/webauthn-keys')
-```
-
-## Example
-
-### JS
-```js
-import '@bicycle-codes/webauthn-keys'
-```
-
 ### pre-built JS
 This package exposes minified JS files too. Copy them to a location that is
 accessible to your web server, then link to them in HTML.
@@ -83,13 +71,146 @@ cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-key
 
 #### HTML
 ```html
-<script type="module" src="./webauth-keys.min.js"></script>
+<script type="module" src="./webauthn-keys.min.js"></script>
+```
+
+## API
+
+### `create`
+Create a new keypair.
+
+```ts
+async function create (
+    lockKey = deriveLockKey(),
+    opts:Partial<{
+        username:string
+        displayName:string
+        relyingPartyID:string
+        relyingPartyName:string
+    }> = {
+        username: 'local-user',
+        displayName: 'Local User',
+        relyingPartyID: document.location.hostname,
+        relyingPartyName: 'wacg'
+    }
+):Promise<{ localID:string, record:Identity, keys:LockKey }>
+```
+
+#### `create` example
+
+```js
+import {
+    create,
+    pushLocalIdentity
+} from '@bicycle-codes/webauthn-keys'
+
+const { record, keys, localID } = await create(undefined, {
+    username: 'alice',
+    displayName: 'Alice Example',
+    relyingPartyID: location.hostname,
+    relyingPartyName: 'Example application'
+})
+
+//
+// Save the ID to indexedDB.
+// This saves public info only, not keys.
+//
+await pushLocalIdentity(id.localID, id.record)
+```
+
+### `getKeys`
+Authenticate with a saved identity.
+
+```ts
+async function getKeys (
+    localID:string
+):Promise<{ record:Identity, keys:LockKey }>
+```
+
+#### `getKeys` example
+
+```ts
+import { getKeys } from '@bicycle-codes/webauthn-keys'
+
+// The local ID is a random string created when you call `create`
+const localID = 'Chp8eTUpF9mSWKlDBCeb'
+
+const { record, keys } = await getKeys(localID)
+```
+
+### `encrypt`
+
+```ts
+export function encrypt (
+    data:JSONValue,
+    lockKey:LockKey,
+    opts:{
+        outputFormat:'base64'|'raw';
+    } = { outputFormat: 'base64' }
+// return type depends on the given output format
+):string|Uint8Array
+```
+
+#### `encrypt` example
+```js
+import { encrypt } from '@bicycle-codes/webauthn-keys'
+
+const encrypted = encrypt('hello encryption', myKeys)
+// => XcxWEwijaHq2u7aui6BBYGjIrjVTkLIS5...
+```
+
+### `decrypt`
+
+```ts
+function decrypt (
+    data:string|Uint8Array,
+    lockKey:LockKey,
+    opts:{ outputFormat?:'utf8'|'raw', parseJSON?:boolean } = {
+        outputFormat: 'utf8',
+        parseJSON: true
+    }
+):string|Uint8Array|JSONValue
+```
+
+```js
+import { decrypt } from '@bicycle-codes/webauthn-keys'
+
+const decrypted = decrypt('XcxWEwijaHq2u7aui6B...', myKeys, {
+    parseJSON: false
+})
+
+// => 'hello encryption'
+```
+
+### `localIdentities`
+Load local identities from indexed DB, return a dictionary from user ID to the identity record.
+
+```ts
+async function localIdentities ():Promise<Record<string, Identity>>
+```
+
+#### `localIdentities` example
+
+```js
+import { localIdentites } from '@bicycle-codes/webauthn-keys'
+
+const ids = await localIdentities()
 ```
 
 ## see also
 
 * [Passkey vs. WebAuthn: What's the Difference?](https://teampassword.com/blog/passkey-vs-webauthn)
+* [Discoverable credentials deep dive](https://web.dev/articles/webauthn-discoverable-credentials)
+* [Sign in with a passkey through form autofill](https://web.dev/articles/passkey-form-autofill)
+
+
 
 ### `libsodium` docs
 
 * [How can I sign and encrypt using the same key pair?](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair)
+
+
+
+## credits
+
+This is heavily influenced by [@lo-fi/local-data-lock](https://github.com/mylofi/local-data-lock) and [@lo-fi/webauthn-local-client](https://github.com/mylofi/webauthn-local-client). Thanks [@lo-fi organization](https://github.com/mylofi/local-data-lock) and [@getify](https://github.com/getify); this would not have been possible without your work.

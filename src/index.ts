@@ -178,7 +178,7 @@ async function register (regOptions:CredentialCreationOptions, opts:{
             throw new Error('WebAuthentication not supported on this device')
         }
 
-        const regOpt = regOptions[credentialTypeKey]  // 'publicKey'
+        const regOpt:'public-key' = regOptions[credentialTypeKey]  // 'public-key'
 
         // ensure credential IDs are binary (not base64 string)
         regOptions[regOpt].excludeCredentials = (
@@ -316,28 +316,19 @@ async function auth (
         normalizeCredentialsList(opts.allowCredentials)
     )
 
-    debug('opts over here', opts)
     const authResult = (await navigator.credentials.get({
         publicKey: opts.publicKey
     }) as (PublicKeyCredential & {
-        response:AuthenticatorAssertionResponse & { userHandle },
+        response:AuthenticatorAssertionResponse,
     })|null)
 
-    debug('auth result', authResult)
     if (!authResult) throw new Error('not auth result')
-
-    debug('auth response client data', authResult.response.clientDataJSON)
 
     const authClientDataRaw = new Uint8Array(authResult.response.clientDataJSON)
     const authClientData = JSON.parse(toUTF8String(authClientDataRaw))
-    debug('parsed data', authClientData)
     if (authClientData.type !== 'webauthn.get') {
         throw new Error('Invalid auth response')
     }
-
-    debug('opts', opts)
-    debug('credential type key', credentialTypeKey)
-    debug('opts cred type', opts[credentialTypeKey])
 
     const req = opts[opts[credentialTypeKey]]
 
@@ -363,7 +354,7 @@ async function auth (
     }
 
     const signatureRaw = new Uint8Array(
-        (authResult.response as AuthenticatorAssertionResponse).signature
+        authResult.response.signature
     )
 
     return {
@@ -385,7 +376,7 @@ async function auth (
                         'userVerification',].includes(key)
                 ))
             )),
-            ...({ userID: new Uint8Array(authResult.response.userHandle) }),
+            ...({ userID: new Uint8Array(authResult.response.userHandle!) }),
             raw: authResult.response as AuthenticatorAssertionResponse,
         },
     }
@@ -538,9 +529,6 @@ export function encrypt (
     }
 }
 
-// @ts-expect-error dev
-window.authDefaults = authDefaults
-
 function authDefaults ({
     credentialType = 'publicKey',
     relyingPartyID = document.location.hostname,
@@ -549,7 +537,7 @@ function authDefaults ({
     allowCredentials = [
         // { type: "public-key", id: ..., }
     ],
-    // mediation = 'optional',
+    mediation = 'optional',
     signal: cancelAuthSignal,
     ...otherOptions
 } = {
@@ -564,7 +552,7 @@ function authDefaults ({
         },
         [credentialTypeKey]: 'publicKey',
         allowCredentials,
-        // mediation,
+        mediation,
         ...(cancelAuthSignal != null ? { signal: cancelAuthSignal, } : null),
         ...otherOptions
     }
