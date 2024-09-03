@@ -197,6 +197,29 @@ import { localIdentites } from '@bicycle-codes/webauthn-keys'
 const ids = await localIdentities()
 ```
 
+## develop
+
+### start a local server
+
+```sh
+npm start
+```
+
+## test
+Run some automated tests of the cryptography API, not `webauthn`.
+
+### start tests & watch for file changes
+
+```sh
+npm test
+```
+
+### run tests and exit
+
+```sh
+npm run test:ci
+```
+
 ## see also
 
 * [Passkey vs. WebAuthn: What's the Difference?](https://teampassword.com/blog/passkey-vs-webauthn)
