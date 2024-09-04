@@ -49,7 +49,6 @@ const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
  * This registers a new identity via `webauthn`.
  */
 export async function create (
-    lockKey = deriveLockKey(),
     _opts:Partial<{
         excludeCredentials: string[];
         username:string
@@ -63,6 +62,7 @@ export async function create (
         relyingPartyName: 'wacg'
     }
 ):Promise<{ localID:string, record:Identity, keys:LockKey }> {
+    const lockKey = deriveLockKey()
     const abortToken = new AbortController()
     const opts = Object.assign({
         username: 'local-user',
@@ -315,6 +315,7 @@ export async function auth (
 // ):Promise<{ keys:LockKey }> {
     opts = authDefaults(opts)
 
+    debug('opts', opts)
     const authRes = await navigator.credentials.get({
         publicKey: opts.publicKey
     }) as AuthResponse

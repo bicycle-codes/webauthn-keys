@@ -18,24 +18,24 @@ import {
 } from '../src/index.js'
 import './style.css'
 const debug = Debug()
-
-debug('local ids', await localIdentities())
+const ABORT = 'abort'
 
 // @ts-expect-error dev
 window.loadLocals = localIdentities
 
 const currentStep = signal<'create'|'logged-in'|null>(null)
 const myKeys = signal<LockKey|null>(null)
-const abort = new AbortController();
+const abortSignal = new AbortController();
 
 (async function () {
     if (!(await supportsWebAuthn())) {
-        debug('no support')
-        return
+        return debug('no support')
     }
 
     const opts = authDefaults({
-        signal: abort.signal
+        signal: abortSignal.signal,
+    }, {
+        userVerification: 'required'
     })
 
     //
@@ -45,11 +45,13 @@ const abort = new AbortController();
     // See https://www.imperialviolet.org/2022/09/22/passkeys.html
     //
     try {
-        const auth = await navigator.credentials.get(opts) as AuthResponse
-        const keys = getKeys(auth)
+        const creds = await navigator.credentials.get(opts) as AuthResponse
+        // const creds = await auth(opts)
+        const keys = getKeys(creds)
         myKeys.value = keys
         currentStep.value = 'logged-in'
     } catch (err) {
+        if (String(err as TypeError).includes(ABORT)) return
         debug('failure...', err)
     }
 })()
@@ -76,23 +78,26 @@ const Example:FunctionComponent = function () {
 
     const register = useCallback(async (ev:SubmitEvent) => {
         ev.preventDefault()
+        abortSignal.abort(ABORT + ' registering as a new user')
         const form = ev.target as HTMLFormElement
         const els = form.elements
         const username = (els['username'] as HTMLInputElement).value
-        const id = await create(undefined, {
+        const id = await create({
             username,
             relyingPartyName: 'Example application'
         })
         await pushLocalIdentity(id.localID, id.record)
         const newState = { ...localIds.value, [id.localID]: id.record }
         localIds.value = newState
+        myKeys.value = id.keys
+        currentStep.value = 'logged-in'
     }, [])
 
     const login = useCallback(async (ev:MouseEvent) => {
         ev.preventDefault()
         const localID = (ev.target as HTMLButtonElement).dataset.localId
         debug('login with this ID', localID)
-        abort.abort()
+        abortSignal.abort(ABORT + ' Login via app UI')
         const authResult = await auth()
         const keys = getKeys(authResult)
         myKeys.value = keys
