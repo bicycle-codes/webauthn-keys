@@ -1,9 +1,9 @@
 import { type FunctionComponent, render } from 'preact'
-import { useCallback, useMemo } from 'preact/hooks'
-import { useSignal } from '@preact/signals'
+import { useCallback, useMemo, useRef } from 'preact/hooks'
+import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@bicycle-codes/debug'
-import type { Identity, LockKey } from '../src/types'
+import type { AuthResponse, Identity, LockKey } from '../src/types'
 import {
     toBase64String,
     create,
@@ -11,7 +11,10 @@ import {
     pushLocalIdentity,
     getKeys,
     encrypt,
-    decrypt
+    decrypt,
+    supportsWebAuthn,
+    authDefaults,
+    auth,
 } from '../src/index.js'
 import './style.css'
 const debug = Debug()
@@ -21,12 +24,41 @@ debug('local ids', await localIdentities())
 // @ts-expect-error dev
 window.loadLocals = localIdentities
 
+const currentStep = signal<'create'|'logged-in'|null>(null)
+const myKeys = signal<LockKey|null>(null)
+const abort = new AbortController();
+
+(async function () {
+    if (!(await supportsWebAuthn())) {
+        debug('no support')
+        return
+    }
+
+    const opts = authDefaults({
+        signal: abort.signal
+    })
+
+    //
+    // Need to do this for the autocomplete to work.
+    // There must be a pending promise to `navigator.credentials.get` in
+    // order for the autocomplete credentials to show.
+    // See https://www.imperialviolet.org/2022/09/22/passkeys.html
+    //
+    try {
+        const auth = await navigator.credentials.get(opts) as AuthResponse
+        const keys = getKeys(auth)
+        myKeys.value = keys
+        currentStep.value = 'logged-in'
+    } catch (err) {
+        debug('failure...', err)
+    }
+})()
+
 const Example:FunctionComponent = function () {
-    const currentStep = useSignal<'create'|'logged-in'|null>(null)
     const localIds = useSignal<Record<string, Identity>|null>(null)
-    const myKeys = useSignal<LockKey|null>(null)
     const encryptedText = useSignal<string|null>(null)
     const decryptedText = useSignal<string|null>(null)
+    const input = useRef<HTMLInputElement>()
 
     if (import.meta.env.DEV) {
         // @ts-expect-error dev
@@ -47,12 +79,10 @@ const Example:FunctionComponent = function () {
         const form = ev.target as HTMLFormElement
         const els = form.elements
         const username = (els['username'] as HTMLInputElement).value
-        debug('click', username)
         const id = await create(undefined, {
             username,
             relyingPartyName: 'Example application'
         })
-        debug('id', id)
         await pushLocalIdentity(id.localID, id.record)
         const newState = { ...localIds.value, [id.localID]: id.record }
         localIds.value = newState
@@ -62,9 +92,9 @@ const Example:FunctionComponent = function () {
         ev.preventDefault()
         const localID = (ev.target as HTMLButtonElement).dataset.localId
         debug('login with this ID', localID)
-        const { record, keys } = await getKeys(localID!)
-        debug('user record', record)
-        debug('these are the keys', keys)
+        abort.abort()
+        const authResult = await auth()
+        const keys = getKeys(authResult)
         myKeys.value = keys
         currentStep.value = 'logged-in'
     }, [])
@@ -91,6 +121,11 @@ const Example:FunctionComponent = function () {
         decryptedText.value = decrypted
     }, [])
 
+    const loginViaInput = useCallback((ev:SubmitEvent) => {
+        ev.preventDefault()
+        debug('logging in via the input', ev)
+    }, [])
+
     return html`<div class="webauthn-keys-demo">
         <h1>webauthn-keys demo</h1>
 
@@ -103,7 +138,12 @@ const Example:FunctionComponent = function () {
                             <div>
                                 <label>
                                     Username
-                                    <input type="text" name="username" id="username" />
+                                    <input
+                                        type="text"
+                                        id="username"
+                                        name="username"
+                                        autocomplete="username webauthn"
+                                    />
                                 </label>
                             </div>
 
@@ -156,7 +196,23 @@ const Example:FunctionComponent = function () {
                 }
 
                 ${currentStep.value === null ?
-                    html`<form class="choose-your-path">
+                    html`<h2>Login</h2>
+                    <form onSubmit=${loginViaInput}>
+                        <div>
+                            <input
+                                ref=${input}
+                                type="text"
+                                id="username"
+                                name="username"
+                                autocomplete="username webauthn"
+                            />
+                        </div>
+                        <div>
+                            <button type="submit">Login</button>
+                        </div>
+                    </form>
+
+                    <form class="choose-your-path">
                         <div>
                             <button onClick=${() => (currentStep.value = 'create')}>
                                 Create a new identity

@@ -1,4 +1,3 @@
-import { createDebug } from '@bicycle-codes/debug'
 import libsodium from 'libsodium-wrappers'
 import {
     supportsWebAuthn,
@@ -16,7 +15,6 @@ import {
     storeLocalIdentities,
     pushLocalIdentity,
     asBufferOrString,
-    isByteArray,
     fromBase64String
 } from './util'
 import type {
@@ -24,19 +22,19 @@ import type {
     RegistrationResult,
     LockKey,
     JSONValue,
-    AuthResult
+    AuthResponse,
 } from './types'
 import { decode as cborDecode } from 'cborg'
+import { createDebug } from '@bicycle-codes/debug'
 const debug = createDebug()
-
-export type * from './types'
 
 export {
     localIdentities,
     storeLocalIdentities,
     pushLocalIdentity,
     toBase64String,
-    fromBase64String
+    fromBase64String,
+    supportsWebAuthn
 }
 
 await libsodium.ready
@@ -53,6 +51,7 @@ const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
 export async function create (
     lockKey = deriveLockKey(),
     _opts:Partial<{
+        excludeCredentials: string[];
         username:string
         displayName:string
         relyingPartyID:string
@@ -138,6 +137,18 @@ export async function create (
     }
 
     return result!
+}
+
+/**
+ * Delete an account from storage (indexedDB).
+ *
+ * @param localID The public ID of the account
+ * @returns {Promise<void>}
+ */
+export async function removeLocalAccount (localID:string):Promise<void> {
+    const ids = await localIdentities()
+    delete ids[localID]
+    await storeLocalIdentities(ids)
 }
 
 export function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
@@ -277,109 +288,46 @@ async function register (regOptions:CredentialCreationOptions, opts:{
     return res!
 }
 
+// /**
+//  * Get the keys from a successful login resposne.
+//  */
+export function getKeys (opts:(PublicKeyCredential & {
+    response:AuthenticatorAssertionResponse
+})):LockKey {
+    const key = extractLockKey({
+        userID: new Uint8Array(opts.response.userHandle!)
+    })
+
+    return key
+}
+
+// export async function getKeys (opts:Partial<CredentialRequestOptions>):LockKey {
+//     const _opts = authDefaults(opts)
+//     const auth = await navigator.credentials.get(_opts) as AuthResponse
+// }
+
 /**
  * Find an existing keypair and return it.
  */
-export async function getKeys (
-    localID:string
-):Promise<{ record:Identity, keys:LockKey }> {
-    const ids = await localIdentities()
-    const identityRecord = (await localIdentities())[localID]
-    if (!identityRecord) throw new Error("Can't find that identity")
+export async function auth (
+    opts:Partial<CredentialRequestOptions> = {}
+):Promise<PublicKeyCredential & { response:AuthenticatorAssertionResponse }> {
+// ):Promise<{ keys:LockKey }> {
+    opts = authDefaults(opts)
 
-    const id = ids[localID]
-
-    const authRes = await auth(authDefaults())
-    const lockKey = extractLockKey(authRes)
-
-    return { record: id, keys: lockKey }
-}
-
-interface AuthDefaults {
-    [credentialTypeKey]:string;
-    allowCredentials;
-    publicKey:PublicKeyCredentialRequestOptions;
-}
-
-/**
- * Authenticate as an existing user.
- */
-async function auth (
-    opts:AuthDefaults = authDefaults()
-):Promise<AuthResult> {
-    if (!supportsWebAuthn()) {
-        throw new Error('no webauthn')
-    }
-
-    // ensure credential IDs are binary (not base64 string)
-    opts.allowCredentials = (
-        normalizeCredentialsList(opts.allowCredentials)
-    )
-
-    const authResult = (await navigator.credentials.get({
+    const authRes = await navigator.credentials.get({
         publicKey: opts.publicKey
-    }) as (PublicKeyCredential & {
-        response:AuthenticatorAssertionResponse,
-    })|null)
+    }) as AuthResponse
 
-    if (!authResult) throw new Error('not auth result')
+    if (!authRes) throw new Error('not auth response')
 
-    const authClientDataRaw = new Uint8Array(authResult.response.clientDataJSON)
-    const authClientData = JSON.parse(toUTF8String(authClientDataRaw))
-    if (authClientData.type !== 'webauthn.get') {
-        throw new Error('Invalid auth response')
-    }
+    return authRes
 
-    const req = opts[opts[credentialTypeKey]]
+    // const lockKey = extractLockKey({
+    //     userID: new Uint8Array(authRes.response.userHandle!)
+    // })
 
-    const expectedChallenge = sodium.to_base64(
-        new Uint8Array(req.challenge),
-        sodium.base64_variants.URLSAFE_NO_PADDING
-    )
-    if (authClientData.challenge !== expectedChallenge) {
-        throw new Error('Challenge not accepted')
-    }
-
-    const authDataRaw = new Uint8Array(
-        (authResult.response as AuthenticatorAssertionResponse).authenticatorData
-    )
-    const authData = parseAuthenticatorData(authDataRaw)
-    if (!checkRPID(authData.rpIdHash, req.rpId)) {
-        throw new Error('Unexpected relying-party ID')
-    }
-
-    // sign-count not supported by this authenticator?
-    if (authData.signCount === 0) {
-        delete authData.signCount
-    }
-
-    const signatureRaw = new Uint8Array(
-        authResult.response.signature
-    )
-
-    return {
-        request: {
-            credentialType: authResult.type,
-            ...opts[opts[credentialTypeKey]],
-            ...(Object.fromEntries(
-                Object.entries(authClientData).filter(([key]) => (
-                    ['origin', 'crossOrigin',].includes(key)
-                ))
-            )),
-        },
-        response: {
-            credentialID: toBase64String(new Uint8Array(authResult.rawId)),
-            signature: signatureRaw,
-            ...(Object.fromEntries(
-                Object.entries(authData).filter(([key]) => (
-                    ['flags', 'signCount', 'userPresence',
-                        'userVerification',].includes(key)
-                ))
-            )),
-            ...({ userID: new Uint8Array(authResult.response.userHandle!) }),
-            raw: authResult.response as AuthenticatorAssertionResponse,
-        },
-    }
+    // return { keys: lockKey }
 }
 
 /**
@@ -529,67 +477,53 @@ export function encrypt (
     }
 }
 
-function authDefaults ({
-    credentialType = 'publicKey',
-    relyingPartyID = document.location.hostname,
-    userVerification = 'required' as UserVerificationRequirement,
-    challenge = sodium.randombytes_buf(20),
-    allowCredentials = [
-        // { type: "public-key", id: ..., }
-    ],
-    mediation = 'optional',
-    signal: cancelAuthSignal,
-    ...otherOptions
-} = {
-    signal: null,
-}):AuthDefaults {
-    const defaults = {
+export function authDefaults (
+    opts:Partial<CredentialRequestOptions> = {},
+    keyOpts:Partial<PublicKeyCredentialRequestOptions> = {}
+):CredentialRequestOptions {
+    const defaults:CredentialRequestOptions = {
         publicKey: {
-            rpId: relyingPartyID,
-            userVerification,
-            challenge,
-            allowCredentials,
+            rpId: location.hostname,
+            // userVerification: 'required',
+            challenge: keyOpts.challenge || sodium.randombytes_buf(20),
+            // allowCredentials: keyOpts.allowCredentials,
+            ...keyOpts,
         },
-        [credentialTypeKey]: 'publicKey',
-        allowCredentials,
-        mediation,
-        ...(cancelAuthSignal != null ? { signal: cancelAuthSignal, } : null),
-        ...otherOptions
+
+        mediation: opts.mediation || 'conditional',
+        ...opts
     }
 
-    // internal meta-data only
-    Object.defineProperty(
-        defaults,
-        credentialTypeKey,
-        {
-            enumerable: false,
-            writable: false,
-            configurable: false,
-            value: credentialType,
-        }
-    )
-
+    debug('defaults', defaults)
     return defaults
 }
 
-function extractLockKey (authResult:AuthResult):LockKey {
-    debug('extracting the key', authResult)
-
-    try {
-        if (
-            authResult &&
-            authResult.response &&
-            isByteArray(authResult.response.userID) &&
-            authResult.response.userID.byteLength === (IV_BYTE_LENGTH + 2)
-        ) {
-            const lockKey = deriveLockKey(
-                authResult.response.userID.subarray(0, IV_BYTE_LENGTH)
-            )
-            return lockKey
-        } else {
-            throw new Error('Passkey info missing')
-        }
-    } catch (err) {
-        throw new Error('Chosen passkey did not provide a valid encryption/decryption key', { cause: err, })
-    }
+function extractLockKey ({ userID }:{ userID:Uint8Array }) {
+    const lockKey = deriveLockKey(userID.subarray(0, IV_BYTE_LENGTH))
+    return lockKey
 }
+
+// function extractLockKey (authResult:AuthResult):LockKey {
+//     debug('extracting the key', authResult)
+
+//     try {
+//         if (
+//             authResult &&
+//             authResult.response &&
+//             isByteArray(authResult.response.userID) &&
+//             authResult.response.userID.byteLength === (IV_BYTE_LENGTH + 2)
+//         ) {
+//             const lockKey = deriveLockKey(
+//                 authResult.response.userID.subarray(0, IV_BYTE_LENGTH)
+//             )
+//             return lockKey
+//         } else {
+//             throw new Error('Passkey info missing')
+//         }
+//     } catch (err) {
+//         throw new Error(
+//             'Chosen passkey did not provide a valid encryption/decryption key',
+//             { cause: err, }
+//         )
+//     }
+// }

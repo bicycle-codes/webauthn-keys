@@ -27,7 +27,7 @@ export async function supportsWebAuthn () {
 
 export function normalizeCredentialsList (
     credList:(any & { id:string|Uint8Array })[]
-):(any & { id:Uint8Array })[]|undefined {
+):PublicKeyCredentialDescriptor[] {
     if (Array.isArray(credList)) {
         return credList.map(entry => ({
             ...entry,
@@ -38,6 +38,8 @@ export function normalizeCredentialsList (
             ),
         }))
     }
+
+    return []
 }
 
 export function fromBase64String (val:string):Uint8Array {
@@ -182,7 +184,6 @@ export function getPublicKeyOpts (opts:Partial<{
     }
 }
 
-// export function buildPasskeyEntry (passkey:Passkey):Passkey & { hash:string } {
 export function buildPasskeyEntry (passkey:{
     seq:number;
     credentialID:string;

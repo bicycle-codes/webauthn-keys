@@ -22,6 +22,7 @@ export type COSE = -8|-7|-37|-257
 export interface RegistrationResult {
     // request:any;
     request:PublicKeyCredentialRequestOptions;
+    // response:AuthenticatorAttestationResponse;
     response:{
         credentialID:string;
         credentialType:PublicKeyCredential['type'];
@@ -36,14 +37,8 @@ export interface RegistrationResult {
     };
 }
 
-export interface AuthResult {
-    request:PublicKeyCredentialRequestOptions;
-    response:{
-        credentialID:string;
-        signature:Uint8Array;
-        userID:Uint8Array;
-        raw:AuthenticatorAssertionResponse;
-    }
+export type AuthResponse = PublicKeyCredential & {
+    response:AuthenticatorAssertionResponse
 }
 
 export interface LockKey {

@@ -225,7 +225,7 @@ npm run test:ci
 * [Passkey vs. WebAuthn: What's the Difference?](https://teampassword.com/blog/passkey-vs-webauthn)
 * [Discoverable credentials deep dive](https://web.dev/articles/webauthn-discoverable-credentials)
 * [Sign in with a passkey through form autofill](https://web.dev/articles/passkey-form-autofill)
-
+* [an opinionated, “quick-start” guide to using passkeys](https://www.imperialviolet.org/2022/09/22/passkeys.html)
 
 
 ### `libsodium` docs
@@ -236,4 +236,4 @@ npm run test:ci
 
 ## credits
 
-This is heavily influenced by [@lo-fi/local-data-lock](https://github.com/mylofi/local-data-lock) and [@lo-fi/webauthn-local-client](https://github.com/mylofi/webauthn-local-client). Thanks [@lo-fi organization](https://github.com/mylofi/local-data-lock) and [@getify](https://github.com/getify); this would not have been possible without your work.
+This is heavily influenced by [@lo-fi/local-data-lock](https://github.com/mylofi/local-data-lock) and [@lo-fi/webauthn-local-client](https://github.com/mylofi/webauthn-local-client). Thanks [@lo-fi organization](https://github.com/mylofi/local-data-lock) and [@getify](https://github.com/getify) for working in open source; this would not have been possible otherwise.
