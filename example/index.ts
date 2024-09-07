@@ -53,6 +53,7 @@ const abortSignal = new AbortController();
     } catch (err) {
         if (String(err as TypeError).includes(ABORT)) return
         debug('failure...', err)
+        throw err
     }
 })()
 
