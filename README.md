@@ -87,7 +87,7 @@ import type {
     RegistrationResult,
     LockKey,
     JSONValue,
-    AuthResult
+    AuthResponse
 } from '@bicycle-codes/webauthn-keys'
 ```
 
