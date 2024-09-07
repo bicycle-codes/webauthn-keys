@@ -301,18 +301,12 @@ export function getKeys (opts:(PublicKeyCredential & {
     return key
 }
 
-// export async function getKeys (opts:Partial<CredentialRequestOptions>):LockKey {
-//     const _opts = authDefaults(opts)
-//     const auth = await navigator.credentials.get(_opts) as AuthResponse
-// }
-
 /**
  * Find an existing keypair and return it.
  */
 export async function auth (
     opts:Partial<CredentialRequestOptions> = {}
 ):Promise<PublicKeyCredential & { response:AuthenticatorAssertionResponse }> {
-// ):Promise<{ keys:LockKey }> {
     opts = authDefaults(opts)
 
     debug('opts', opts)
@@ -320,15 +314,7 @@ export async function auth (
         publicKey: opts.publicKey
     }) as AuthResponse
 
-    if (!authRes) throw new Error('not auth response')
-
     return authRes
-
-    // const lockKey = extractLockKey({
-    //     userID: new Uint8Array(authRes.response.userHandle!)
-    // })
-
-    // return { keys: lockKey }
 }
 
 /**

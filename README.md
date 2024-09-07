@@ -76,6 +76,12 @@ cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-key
 <script type="module" src="./webauthn-keys.min.js"></script>
 ```
 
+## example
+Create a new keypair, and protect it with the `webatuhn` API.
+
+```ts
+```
+
 ## API
 
 ### `create`
@@ -249,6 +255,11 @@ npm run test:ci
 * [Sign in with a passkey through form autofill](https://web.dev/articles/passkey-form-autofill)
 * [an opinionated, “quick-start” guide to using passkeys](https://www.imperialviolet.org/2022/09/22/passkeys.html)
 
+### [What's the WebAuthn User Handle (`response.userHandle`)?](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-handle)
+
+> Its primary function is to enable the authenticator to map a set of credentials (passkeys) to a specific user account.
+
+> A secondary use of the User Handle (response.userHandle) is to allow authenticators to know when to replace an existing resident key (discoverable credential) with a new one during the registration ceremony.
 
 ### `libsodium` docs
 
