@@ -20,9 +20,6 @@ import './style.css'
 const debug = Debug()
 const ABORT = 'abort'
 
-// @ts-expect-error dev
-window.loadLocals = localIdentities
-
 const currentStep = signal<'create'|'logged-in'|null>(null)
 const myKeys = signal<LockKey|null>(null)
 const abortSignal = new AbortController();
@@ -46,7 +43,6 @@ const abortSignal = new AbortController();
     //
     try {
         const creds = await navigator.credentials.get(opts) as AuthResponse
-        // const creds = await auth(opts)
         const keys = getKeys(creds)
         myKeys.value = keys
         currentStep.value = 'logged-in'
@@ -71,15 +67,21 @@ const Example:FunctionComponent = function () {
         }
     }
 
+    /**
+     * For the list of local IDs on the right hand side
+     */
     useMemo(async () => {
         const ids = await localIdentities()
         if (!ids) return
         localIds.value = ids
     }, [])
 
+    /**
+     * Create a new ID and keypair
+     */
     const register = useCallback(async (ev:SubmitEvent) => {
         ev.preventDefault()
-        abortSignal.abort(ABORT + ' registering as a new user')
+        abortSignal.abort(ABORT + ' -- registering as a new user')
         const form = ev.target as HTMLFormElement
         const els = form.elements
         const username = (els['username'] as HTMLInputElement).value
@@ -94,6 +96,11 @@ const Example:FunctionComponent = function () {
         currentStep.value = 'logged-in'
     }, [])
 
+    /**
+     * This is when you click the "login as ..." button
+     * @NOTE We need to abort the pending login that we use
+     * for autocomplete.
+     */
     const login = useCallback(async (ev:MouseEvent) => {
         ev.preventDefault()
         const localID = (ev.target as HTMLButtonElement).dataset.localId
