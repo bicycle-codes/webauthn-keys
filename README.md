@@ -217,8 +217,9 @@ function getKeys (opts:(PublicKeyCredential & {
 import { getKeys, auth } from '@bicycle-codes/webauthn-keys'
 
 // authenticate
-const authData = awaith auth()
+const authData = await auth()
 
+// get keys from auth response
 const keys = getKeys(authData)
 ```
 
