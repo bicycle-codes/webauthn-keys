@@ -268,7 +268,7 @@ export async function localIdentities ():Promise<Record<string, Identity>> {
 }
 
 /**
- * Add a single new identity to local storage.
+ * Add a single new identity to local indexedDB.
  */
 export async function pushLocalIdentity (localId:string, id:Identity) {
     const existingIds = await localIdentities()

@@ -5,11 +5,9 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const glob = await globby(['src/*.ts', '!src/*.test.ts'])
-
 // JS
 await esbuild.build({
-    entryPoints: glob,
+    entryPoints: await globby(['src/*.ts', '!src/*.test.ts']),
     keepNames: true,
     minify: false,
     target: 'es2022',
@@ -23,12 +21,13 @@ await esbuild.build({
 
 // minified
 await esbuild.build({
-    entryPoints: glob,
+    entryPoints: [path.join('src', 'index.ts')],
     keepNames: true,
     minify: true,
     target: 'es2022',
+    bundle: true,
     sourcemap: true,
-    outdir: path.join(__dirname, 'dist'),
+    outfile: path.join(__dirname, 'dist', 'index.min.js'),
     outExtension: { '.js': '.min.js' },
     platform: 'browser',
     format: 'esm',
