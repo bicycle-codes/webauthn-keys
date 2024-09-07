@@ -128,7 +128,7 @@ await pushLocalIdentity(id.localID, id.record)
 Login again, and get the same keypair in memory.
 
 ```ts
-import { auth getKeys } from '@bicycle-codes/webauthn-keys'
+import { auth, getKeys } from '@bicycle-codes/webauthn-keys'
 
 const authResult = await auth()
 const keys = getKeys(authResult)
@@ -263,7 +263,7 @@ Check that the given signature is valid with the given data.
 export async function verify (
     data:string|Uint8Array,
     sig:string|Uint8Array,
-    keys:LockKey
+    keys:{ publicKey:Uint8Array|string }
 ):Promise<boolean>
 ```
 
