@@ -503,28 +503,3 @@ function extractLockKey ({ userID }:{ userID:Uint8Array }) {
     const lockKey = deriveLockKey(userID.subarray(0, IV_BYTE_LENGTH))
     return lockKey
 }
-
-// function extractLockKey (authResult:AuthResult):LockKey {
-//     debug('extracting the key', authResult)
-
-//     try {
-//         if (
-//             authResult &&
-//             authResult.response &&
-//             isByteArray(authResult.response.userID) &&
-//             authResult.response.userID.byteLength === (IV_BYTE_LENGTH + 2)
-//         ) {
-//             const lockKey = deriveLockKey(
-//                 authResult.response.userID.subarray(0, IV_BYTE_LENGTH)
-//             )
-//             return lockKey
-//         } else {
-//             throw new Error('Passkey info missing')
-//         }
-//     } catch (err) {
-//         throw new Error(
-//             'Chosen passkey did not provide a valid encryption/decryption key',
-//             { cause: err, }
-//         )
-//     }
-// }

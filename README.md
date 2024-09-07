@@ -42,7 +42,9 @@ import {
     create,
     getKeys,
     encrypt,
-    decrypt
+    decrypt,
+    signData,
+    verify,
     toBase64String,
     fromBase64String,
     localIdentities,
@@ -119,7 +121,7 @@ await pushLocalIdentity(id.localID, id.record)
 ```
 
 ### `getKeys`
-Authenticate with a saved identity.
+Authenticate with a saved identity; takes the local user ID, which you would need to get somehow.
 
 ```ts
 async function getKeys (
@@ -136,6 +138,24 @@ import { getKeys } from '@bicycle-codes/webauthn-keys'
 const localID = 'Chp8eTUpF9mSWKlDBCeb'
 
 const { record, keys } = await getKeys(localID)
+```
+
+### `signData`
+```ts
+export async function signData (data:string|Uint8Array, key:LockKey, opts?:{
+    outputFormat?:'base64'|'raw'
+}):Promise<Uint8Array>
+```
+
+#### `signData` example
+```ts
+import { signData, deriveLockKey } from '@bicycle-codes/webauthn-keys'
+
+// create a new keypair
+const key = await deriveLockKey()
+
+const sig = await signData('hello world', key)
+// => INZ2A9Lt/zL6Uf6d6D6fNi95xSGYDiUpK3tr/zz5a9iYyG5u...
 ```
 
 ### `encrypt`
@@ -171,6 +191,8 @@ function decrypt (
     }
 ):string|Uint8Array|JSONValue
 ```
+
+#### `decrypt` example
 
 ```js
 import { decrypt } from '@bicycle-codes/webauthn-keys'
