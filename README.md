@@ -160,7 +160,7 @@ const { record, keys, localID } = await create(undefined, {
 // Save the ID to indexedDB.
 // This saves public info only, not keys.
 //
-await pushLocalIdentity(id.localID, id.record)
+await pushLocalIdentity(id.localID, record)
 ```
 
 ### `getKeys`
