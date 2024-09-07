@@ -28,7 +28,6 @@ await esbuild.build({
     bundle: true,
     sourcemap: true,
     outfile: path.join(__dirname, 'dist', 'index.min.js'),
-    outExtension: { '.js': '.min.js' },
     platform: 'browser',
     format: 'esm',
     metafile: true,
