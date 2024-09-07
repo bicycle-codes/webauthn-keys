@@ -60,7 +60,7 @@ The secret `iv` is set in the `user.id` property in a [PublicKeyCredentialCreati
 > We are not using the [webcrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) for creating keys, because we are waiting on ECC support in all browsers.
 
 > [!NOTE]  
-> [We only need 1 keypair](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair) for both signing and encrypting. Internally, we create 2 keypairs -- one for signing and one for encryption, but this is hidden from the interface.
+> [We only need 1 keypair](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair) for both signing and encrypting. Internally, we create 2 keypairs -- one for signing and one for encryption -- but this is hidden from the interface.
 
 ## Use
 This exposes ESM via [package.json `exports` field](https://nodejs.org/api/packages.html#exports).
