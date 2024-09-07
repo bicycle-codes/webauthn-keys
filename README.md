@@ -105,7 +105,19 @@ cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-key
 Create a new keypair, and protect it with the `webatuhn` API.
 
 ```ts
+import { create } from '@bicycle-codes/webauthn-keys'
+
+const id = await create({
+    username: 'alice',  // unique within relying party (this device)
+    displayName: 'Alice Example',  // human-readable name
+    relyingPartyName: 'Example application'  // rp.name
+})
 ```
+
+### See also
+* [username property](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-name)
+* [displayName property](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-display-name)
+* [What's the Difference Between User Name and User Display Name?](https://www.corbado.com/blog/webauthn-user-id-userhandle#user-name-vs-user-display-name)
 
 ## API
 
