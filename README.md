@@ -114,6 +114,15 @@ const id = await create({
 })
 ```
 
+Save the public data of the new ID to `localStorage`.
+
+```ts
+import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
+
+// save to localStorage
+await pushLocalIdentity(id.localID, id.record)
+```
+
 Login again, and get the same keypair in memory.
 
 ```ts
