@@ -1,11 +1,24 @@
 import { test, expect, describe } from 'vitest'
-import { deriveLockKey, signData, verify, encrypt, decrypt } from '.'
+import {
+    deriveLockKey,
+    signData,
+    verify,
+    encrypt,
+    decrypt,
+    stringify
+} from '.'
 
 describe('webauthn-keys', () => {
     let key
     test('create some keys', async () => {
         key = await deriveLockKey()
         expect(key).toBeTruthy()
+    })
+
+    let keyString:string
+    test('serialize the public key', () => {
+        keyString = stringify(key)
+        expect(keyString).to.be.toBeTypeOf('string')
     })
 
     let sig:string
@@ -17,6 +30,13 @@ describe('webauthn-keys', () => {
 
     test('verify a signature', async () => {
         const isOk = await verify('hello world', sig, key)
+        expect(isOk).toEqual(true)
+    })
+
+    test('verify a signature given a string public key', async () => {
+        const isOk = await verify('hello world', sig, {
+            publicKey: keyString
+        })
         expect(isOk).toEqual(true)
     })
 

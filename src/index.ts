@@ -288,9 +288,9 @@ async function register (regOptions:CredentialCreationOptions, opts:{
     return res!
 }
 
-// /**
-//  * Get the keys from a successful login resposne.
-//  */
+/**
+ * Get the keys from a successful login resposne.
+ */
 export function getKeys (opts:(PublicKeyCredential & {
     response:AuthenticatorAssertionResponse
 })):LockKey {
@@ -299,6 +299,11 @@ export function getKeys (opts:(PublicKeyCredential & {
     })
 
     return key
+}
+
+export function stringify (keys:LockKey):string {
+    return toBase64String(keys.publicKey)
+    // => 'welOX9O96R6WH0S8cqqwMlPAJ3VwMgAZEnc1wa1MN70='
 }
 
 /**
@@ -375,16 +380,20 @@ export function decrypt (
 export async function verify (
     data:string|Uint8Array,
     sig:string|Uint8Array,
-    keys:LockKey
+    keys:{ publicKey:Uint8Array|string }
 ):Promise<boolean> {
     await libsodium.ready
     const sodium = libsodium
 
     try {
+        const pubKey = typeof keys.publicKey === 'string' ?
+            fromBase64String(keys.publicKey) :
+            keys.publicKey
+
         const isOk = sodium.crypto_sign_verify_detached(
             typeof sig === 'string' ? fromBase64String(sig) : sig,
             asBufferOrString(data),
-            keys.publicKey
+            pubKey
         )
 
         return isOk

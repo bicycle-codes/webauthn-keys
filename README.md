@@ -223,6 +223,21 @@ const authData = await auth()
 const keys = getKeys(authData)
 ```
 
+### `stringify`
+Return a `base64` encoded string of the given public key.
+
+```ts
+function stringify (keys:LockKey):string
+```
+
+#### `stringify` example
+```ts
+import { stringify } from '@bicycle-codes/webauthn-keys'
+
+const keyString = stringify(myKeys)
+// => 'welOX9O96R6WH0S8cqqwMlPAJ3VwMgAZEnc1wa1MN70='
+```
+
 ### `signData`
 ```ts
 export async function signData (data:string|Uint8Array, key:LockKey, opts?:{
@@ -239,6 +254,27 @@ const key = await deriveLockKey()
 
 const sig = await signData('hello world', key)
 // => INZ2A9Lt/zL6Uf6d6D6fNi95xSGYDiUpK3tr/zz5a9iYyG5u...
+```
+
+### `verify`
+Check that the given signature is valid with the given data.
+
+```ts
+export async function verify (
+    data:string|Uint8Array,
+    sig:string|Uint8Array,
+    keys:LockKey
+):Promise<boolean>
+```
+
+#### `verify` example
+```ts
+import { verify } from '@bicycle-codes/webauthn-keys'
+
+const isOk = await verify('hello', 'dxKmG3oTEN2i23N9d...', {
+    publicKey: '...'  // Uint8Array or string
+})
+// => true
 ```
 
 ### `encrypt`
