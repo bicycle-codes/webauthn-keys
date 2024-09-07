@@ -15,6 +15,31 @@ Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
 
 <!-- toc -->
 
+- [install](#install)
+- [how it works](#how-it-works)
+- [Use](#use)
+  * [ESM](#esm)
+  * [pre-built JS](#pre-built-js)
+- [example](#example)
+- [API](#api)
+  * [`create`](#create)
+  * [`getKeys`](#getkeys)
+  * [`signData`](#signdata)
+  * [`encrypt`](#encrypt)
+  * [`decrypt`](#decrypt)
+  * [`localIdentities`](#localidentities)
+- [develop](#develop)
+  * [start a local server](#start-a-local-server)
+- [test](#test)
+  * [start tests & watch for file changes](#start-tests--watch-for-file-changes)
+  * [run tests and exit](#run-tests-and-exit)
+- [see also](#see-also)
+  * [What's the WebAuthn User Handle (`response.userHandle`)?](#whats-the-webauthn-user-handle-responseuserhandle)
+  * [`libsodium` docs](#libsodium-docs)
+- [credits](#credits)
+
+<!-- tocstop -->
+
 ## install
 
 ```sh
