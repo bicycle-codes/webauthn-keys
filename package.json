@@ -14,20 +14,30 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "lint": "eslint \"./**/*.{ts,js}\"",
-    "build-tests": "esbuild test/index.ts --target=es2020 --bundle --keep-names > test/test-bundle.js",
     "test": "vitest",
     "test:ci": "vitest --run",
-    "build-esm": "esbuild src/*.ts --format=esm --metafile=dist/meta.json --keep-names --tsconfig=tsconfig.build.json --outdir=./dist --sourcemap && tsc --emitDeclarationOnly --project tsconfig.build.json --outDir dist",
-    "build-esm:min": "esbuild ./src/*.ts --format=esm --keep-names --bundle --tsconfig=tsconfig.build.json --minify --out-extension:.js=.min.js --outdir=./dist --sourcemap",
+    "build-esm": "esbuild src/^*.test.ts --format=esm --metafile=dist/meta.json --keep-names --tsconfig=tsconfig.build.json --outdir=./dist --sourcemap",
+    "build-types": "tsc --emitDeclarationOnly --project tsconfig.build.json --outDir dist",
+    "build-esm:min": "esbuild src/^*.test.ts --format=esm --keep-names --bundle --tsconfig=tsconfig.build.json --minify --out-extension:.js=.min.js --outdir=./dist --sourcemap",
     "build-example": "mkdir -p ./public && rm -rf ./public/* && VITE_DEBUG_MODE=staging vite --mode staging --base=\"/repo-name\" build",
     "build-docs": "typedoc ./src/index.ts",
-    "build": "mkdir -p ./dist && rm -rf ./dist/* && npm run build-esm && npm run build-esm:min",
+    "build": "mkdir -p ./dist && rm -rf ./dist/* && esbuild ./build.ts | node --input-type=module",
     "start": "vite",
     "preversion": "npm run lint",
     "toc": "markdown-toc --maxdepth 3 -i README.md",
     "version": "npm run toc && auto-changelog -p --template keepachangelog --breaking-pattern 'BREAKING CHANGE:' && git add CHANGELOG.md README.md",
     "postversion": "git push --follow-tags && npm publish",
     "prepublishOnly": "npm run build"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./types": "./dist/types.js",
+    "./util": "./dist/util.js",
+    "./min": "./dist/index.min.js",
+    "./*": [
+      "./dist/*.js",
+      "./dist/*"
+    ]
   },
   "dependencies": {
     "@bicycle-codes/asn1": "^0.0.5",
@@ -50,22 +60,17 @@
     "esbuild": "^0.23.0",
     "eslint": "^8.57.0",
     "eslint-config-standard": "^17.1.0",
+    "fast-glob": "^3.3.2",
     "htm": "^3.1.1",
     "jsdom": "^25.0.0",
     "markdown-toc": "^1.2.0",
+    "npm-run-all": "^4.1.5",
     "postcss-nesting": "^13.0.0",
     "preact": "^10.22.1",
     "typedoc": "^0.26.4",
     "typescript": "^5.4.5",
     "vite": "^5.3.3",
     "vitest": "^2.0.5"
-  },
-  "exports": {
-    ".": "./dist/index.js",
-    "./*": [
-      "./dist/*.js",
-      "./dist/*"
-    ]
   },
   "author": "nichoth <nichoth@nichoth.com> (https://nichoth.com)",
   "repository": {
