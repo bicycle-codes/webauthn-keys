@@ -144,7 +144,7 @@ const keys = getKeys(authResult)
 ## API
 
 ### `create`
-Create a new keypair.
+Create a new keypair. The relying party ID defaults to the current `location.hostname`.
 
 ```ts
 async function create (
@@ -201,6 +201,22 @@ import { auth, getKeys } from '@bicycle-codes/webauthn'
 
 const authResult = await auth()
 const keys = getKeys(authResult)
+```
+
+### `pushLocalIdentity`
+Take the `localId` created by the `create` call, and save it to `indexedDB`.
+
+```ts
+async function pushLocalIdentity (localId:string, id:Identity):Promise<void>
+```
+
+#### `pushLocalIdentity` example
+```ts
+const id = await create({
+    username,
+    relyingPartyName: 'Example application'
+})
+await pushLocalIdentity(id.localID, id.record)
 ```
 
 

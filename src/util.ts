@@ -270,7 +270,7 @@ export async function localIdentities ():Promise<Record<string, Identity>> {
 /**
  * Add a single new identity to local indexedDB.
  */
-export async function pushLocalIdentity (localId:string, id:Identity) {
+export async function pushLocalIdentity (localId:string, id:Identity):Promise<void> {
     const existingIds = await localIdentities()
     existingIds[localId] = id
     storeLocalIdentities(existingIds)
@@ -279,7 +279,9 @@ export async function pushLocalIdentity (localId:string, id:Identity) {
 /**
  * Set the local storage identities
  */
-export async function storeLocalIdentities (_identities:Record<string, Identity>) {
+export async function storeLocalIdentities (
+    _identities:Record<string, Identity>
+):Promise<void> {
     const identities = Object.fromEntries(
         Object.entries(_identities)
             .map(([localID, entry]) => ([
