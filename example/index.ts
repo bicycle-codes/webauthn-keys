@@ -134,6 +134,10 @@ const Example:FunctionComponent = function () {
         decryptedText.value = decrypted
     }, [])
 
+    /**
+     * @NOTE
+     * This doesn't get called if you use the autocomplete to login.
+     */
     const loginViaInput = useCallback((ev:SubmitEvent) => {
         ev.preventDefault()
         debug('logging in via the input', ev)

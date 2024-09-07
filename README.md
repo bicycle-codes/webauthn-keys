@@ -114,6 +114,15 @@ const id = await create({
 })
 ```
 
+Login again, and get the same keypair in memory.
+
+```ts
+import { auth getKeys } from '@bicycle-codes/webauthn-keys'
+
+const authResult = await auth()
+const keys = getKeys(authResult)
+```
+
 ### See also
 * [username property](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-name)
 * [displayName property](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-display-name)
@@ -163,24 +172,43 @@ const { record, keys, localID } = await create(undefined, {
 await pushLocalIdentity(id.localID, record)
 ```
 
-### `getKeys`
-Authenticate with a saved identity; takes the local user ID, which you would need to get somehow.
+### `auth`
+Prompt the user for authentication with `webauthn`.
 
 ```ts
-async function getKeys (
-    localID:string
-):Promise<{ record:Identity, keys:LockKey }>
+async function auth (
+    opts:Partial<CredentialRequestOptions> = {}
+):Promise<PublicKeyCredential & { response:AuthenticatorAssertionResponse }>
+```
+
+#### `auth` example
+
+```ts
+import { auth, getKeys } from '@bicycle-codes/webauthn'
+
+const authResult = await auth()
+const keys = getKeys(authResult)
+```
+
+
+### `getKeys`
+Authenticate with a saved identity; takes the response from `auth()`.
+
+```ts
+function getKeys (opts:(PublicKeyCredential & {
+    response:AuthenticatorAssertionResponse
+})):LockKey
 ```
 
 #### `getKeys` example
 
 ```ts
-import { getKeys } from '@bicycle-codes/webauthn-keys'
+import { getKeys, auth } from '@bicycle-codes/webauthn-keys'
 
-// The local ID is a random string created when you call `create`
-const localID = 'Chp8eTUpF9mSWKlDBCeb'
+// authenticate
+const authData = awaith auth()
 
-const { record, keys } = await getKeys(localID)
+const keys = getKeys(authData)
 ```
 
 ### `signData`
