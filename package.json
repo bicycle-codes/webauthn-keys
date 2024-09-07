@@ -1,6 +1,6 @@
 {
   "name": "@bicycle-codes/webauthn-keys",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Use ECC keys with the webauthn API",
   "type": "module",
   "directories": {

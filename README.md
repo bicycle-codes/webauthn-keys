@@ -25,6 +25,7 @@ Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
 - [API](#api)
   * [`create`](#create)
   * [`auth`](#auth)
+  * [`pushLocalIdentity`](#pushlocalidentity)
   * [`getKeys`](#getkeys)
   * [`stringify`](#stringify)
   * [`signData`](#signdata)
