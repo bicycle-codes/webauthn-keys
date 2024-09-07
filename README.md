@@ -118,12 +118,12 @@ const id = await create({
 })
 ```
 
-Save the public data of the new ID to `localStorage`.
+Save the public data of the new ID to `indexedDB`.
 
 ```ts
 import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
 
-// save to localStorage
+// save to indexedDB
 await pushLocalIdentity(id.localID, id.record)
 ```
 
