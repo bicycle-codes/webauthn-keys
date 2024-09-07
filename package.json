@@ -16,7 +16,6 @@
     "lint": "eslint \"./**/*.{ts,js}\"",
     "test": "vitest",
     "test:ci": "vitest --run",
-    "build-esm": "esbuild src/^*.test.ts --format=esm --metafile=dist/meta.json --keep-names --tsconfig=tsconfig.build.json --outdir=./dist --sourcemap",
     "build-types": "tsc --emitDeclarationOnly --project tsconfig.build.json --outDir dist",
     "build-esm:min": "esbuild src/^*.test.ts --format=esm --keep-names --bundle --tsconfig=tsconfig.build.json --minify --out-extension:.js=.min.js --outdir=./dist --sourcemap",
     "build-example": "mkdir -p ./public && rm -rf ./public/* && VITE_DEBUG_MODE=staging vite --mode staging --base=\"/repo-name\" build",
