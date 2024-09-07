@@ -37,22 +37,10 @@ export default defineConfig({
         open: true,
     },
     build: {
+        target: 'es2023',
         minify: false,
         outDir: '../public',
         emptyOutDir: true,
         sourcemap: 'inline'
     }
 })
-
-// function jsToBottomNoModule () {
-//     return {
-//         name: 'no-attribute',
-//         transformIndexHtml (html) {
-//             html = html.replace("type='module' crossorigin", '')
-//             const scriptTag = html.match(/<script[^>]*>(.*?)<\/script[^>]*>/)[0]
-//             html = html.replace(scriptTag, '')
-//             html = html.replace('<!-- # INSERT SCRIPT HERE -->', scriptTag)
-//             return html
-//         }
-//     }
-// }
