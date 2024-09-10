@@ -129,7 +129,7 @@ import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
 await pushLocalIdentity(id.localID, id.record)
 ```
 
-Login again, and get the same keypair in memory.
+Login again, and get the same keypair in memory. This will prompt for biometric authentication.
 
 ```ts
 import { auth, getKeys } from '@bicycle-codes/webauthn-keys'
