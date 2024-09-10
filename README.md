@@ -14,8 +14,6 @@ Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
 
 <!-- toc -->
 
-## contents
-
 - [install](#install)
 - [how it works](#how-it-works)
 - [Use](#use)
