@@ -5,6 +5,12 @@ export interface PassKeyPublicKey {
     spki:string;
 }
 
+export type CipherText = ArrayBuffer
+export type Msg = ArrayBuffer|string|Uint8Array
+export type PublicKey = CryptoKey
+export type PrivateKey = CryptoKey
+export type SymmKey = CryptoKey
+
 export interface Passkey {
     credentialID:string;
     seq:number;
@@ -55,3 +61,8 @@ export type JSONPrimitive = string | number | boolean | null | undefined;
 export type JSONValue = JSONPrimitive | JSONValue[] | {
     [key: string]: JSONValue;
 };
+
+export enum CharSize {
+    B8 = 8,
+    B16 = 16,
+}

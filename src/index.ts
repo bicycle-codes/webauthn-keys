@@ -439,8 +439,8 @@ export async function signData (
     return outputFormat === 'base64' ? toBase64String(sig) : sig
 }
 
-export function encrypt (data:JSONValue, lockKey):string
-export function encrypt (data:JSONValue, lockKey, { outputFormat }:{
+export function encrypt (data:JSONValue, lockKey:LockKey):string
+export function encrypt (data:JSONValue, lockKey:LockKey, { outputFormat }:{
     outputFormat:'base64'
 }):string
 export function encrypt (data:JSONValue, lockKey, { outputFormat }:{

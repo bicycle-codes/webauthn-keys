@@ -1,3 +1,10 @@
+import { CharSize } from './types'
+
+export const AES_GCM = 'AES-GCM' as const
+export const ECC_EXCHANGE_ALG = 'ECDH' as const
+export const DEFAULT_CHAR_SIZE = CharSize.B16
+export const DEFAULT_SYMM_ALG = AES_GCM
+
 /**
  * NOTE: these are ordered by "preference" for key
  * generation by WebAuthn create()

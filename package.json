@@ -12,6 +12,16 @@
     "./dist/*"
   ],
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./types": "./dist/types.js",
+    "./util": "./dist/util.js",
+    "./min": "./dist/index.min.js",
+    "./*": [
+      "./dist/*.js",
+      "./dist/*"
+    ]
+  },
   "scripts": {
     "lint": "eslint \"./**/*.{ts,js}\"",
     "test": "vitest",
@@ -27,22 +37,17 @@
     "postversion": "git push --follow-tags && npm publish",
     "prepublishOnly": "npm run build"
   },
-  "exports": {
-    ".": "./dist/index.js",
-    "./types": "./dist/types.js",
-    "./util": "./dist/util.js",
-    "./min": "./dist/index.min.js",
-    "./*": [
-      "./dist/*.js",
-      "./dist/*"
-    ]
-  },
   "dependencies": {
     "@bicycle-codes/asn1": "^0.0.6",
+    "@bicycle-codes/one-webcrypto": "^1.1.2",
+    "@noble/ciphers": "^0.6.0",
+    "@noble/ed25519": "^2.1.0",
+    "@noble/hashes": "^1.5.0",
     "cborg": "^4.2.3",
     "idb-keyval": "^6.2.1",
     "libsodium": "^0.7.15",
-    "libsodium-wrappers": "^0.7.15"
+    "libsodium-wrappers": "^0.7.15",
+    "uint8arrays": "^5.1.0"
   },
   "devDependencies": {
     "@bicycle-codes/debug": "^0.6.13",

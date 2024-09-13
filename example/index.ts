@@ -17,6 +17,7 @@ import {
     auth,
 } from '../src/index.js'
 import './style.css'
+import '../src/noble.js'
 const debug = Debug()
 const ABORT = 'abort'
 

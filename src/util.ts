@@ -2,7 +2,8 @@ import { del, get, set } from 'idb-keyval'
 import libsodium from 'libsodium-wrappers'
 import { ASN1, type ASN1Data } from '@bicycle-codes/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
-import type { PassKeyPublicKey, Identity, JSONValue } from './types'
+import type { PassKeyPublicKey, Identity, JSONValue, Msg } from './types'
+import { CharSize } from './types'
 import Debug from '@bicycle-codes/debug'
 const debug = Debug()
 
@@ -372,4 +373,44 @@ export function asBufferOrString (
 
     // data must be a string
     return String(data)
+}
+
+export function joinBufs (fst:ArrayBuffer, snd:ArrayBuffer):ArrayBuffer {
+    const view1 = new Uint8Array(fst)
+    const view2 = new Uint8Array(snd)
+    const joined = new Uint8Array(view1.length + view2.length)
+    joined.set(view1)
+    joined.set(view2, view1.length)
+    return joined.buffer
+}
+
+export const normalizeUtf16ToBuf = (msg:Msg): ArrayBuffer => {
+    return normalizeToBuf(msg, (str) => strToArrBuf(str, CharSize.B16))
+}
+
+export function normalizeToBuf (
+    msg:Msg,
+    strConv:(str:string)=>ArrayBuffer
+):ArrayBuffer {
+    if (typeof msg === 'string') {
+        return strConv(msg)
+    } else if (typeof msg === 'object' && msg.byteLength !== undefined) {
+        // this is the best runtime check I could find for ArrayBuffer/Uint8Array
+        const temp = new Uint8Array(msg)
+        return temp.buffer
+    } else {
+        throw new Error('Improper value. Must be a string, ArrayBuffer, Uint8Array')
+    }
+}
+
+export function strToArrBuf (str:string, charSize:CharSize):ArrayBuffer {
+    const view = charSize === 8 ?
+        new Uint8Array(str.length) :
+        new Uint16Array(str.length)
+
+    for (let i = 0, strLen = str.length; i < strLen; i++) {
+        view[i] = str.charCodeAt(i)
+    }
+
+    return view.buffer
 }
