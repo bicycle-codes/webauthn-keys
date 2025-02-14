@@ -2,7 +2,7 @@ import { type FunctionComponent, render } from 'preact'
 import { useCallback, useMemo, useRef } from 'preact/hooks'
 import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
-import Debug from '@bicycle-codes/debug'
+import Debug from '@substrate-system/debug'
 import type { AuthResponse, Identity, LockKey } from '../src/types'
 import {
     toBase64String,

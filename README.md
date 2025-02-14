@@ -6,11 +6,14 @@
 [![install size](https://packagephobia.com/badge?p=@bicycle-codes/webauthn-keys)](https://packagephobia.com/result?p=@bicycle-codes/webauthn-keys)
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
 
-A simple way to use crypto keys, protected by [webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric authentication).
+A simple way to use crypto keys, protected by [webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
+(biometric authentication).
 
 Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
 
 [See a live demo](https://bicycle-codes.github.io/webauthn-keys/)
+
+<details><summary><h2>Contents</h2></summary>
 
 <!-- toc -->
 
@@ -20,6 +23,9 @@ Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
   * [ESM](#esm)
   * [pre-built JS](#pre-built-js)
 - [example](#example)
+  * [Create a new keypair](#create-a-new-keypair)
+  * [Save public data to `indexedDB`](#save-public-data-to-indexeddb)
+  * [get a persisted keypair](#get-a-persisted-keypair)
   * [See also](#see-also)
 - [API](#api)
   * [`create`](#create)
@@ -44,6 +50,8 @@ Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
 
 <!-- tocstop -->
 
+</details>
+
 ## install
 
 ```sh
@@ -52,15 +60,24 @@ npm i -S @bicycle-codes/webauthn-keys
 
 ## how it works
 
-We [save the `iv` of the our keypair](./src/index.ts#L80), which lets us [re-create the same keypair](https://libsodium.gitbook.io/doc/public-key_cryptography/public-key_signatures#key-pair-generation) on subsequent sessions.
+We [save the `iv` of the our keypair](./src/index.ts#L80), which lets us
+[re-create the same keypair](https://libsodium.gitbook.io/doc/public-key_cryptography/public-key_signatures#key-pair-generation)
+on subsequent sessions.
 
-The secret `iv` is set in the `user.id` property in a [PublicKeyCredentialCreationOptions](https://developer.mozilla.org/en-US/docs/Web/API/PublicKeyCredentialCreationOptions) object. The browser saves the credential, and will only read it after successful authentication with the `webauthn` API.
+The secret `iv` is set in the `user.id` property in a
+[PublicKeyCredentialCreationOptions](https://developer.mozilla.org/en-US/docs/Web/API/PublicKeyCredentialCreationOptions)
+object. The browser saves the credential, and will only read it after
+successful authentication with the `webauthn` API.
 
 > [!NOTE]  
-> We are not using the [webcrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) for creating keys, because we are waiting on ECC support in all browsers.
+> We are not using the [webcrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
+> for creating keys, because we are waiting on ECC support in all browsers.
 
 > [!NOTE]  
-> [We only need 1 keypair](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair) for both signing and encrypting. Internally, we create 2 keypairs -- one for signing and one for encryption -- but this is hidden from the interface.
+> [We only need 1 keypair](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair)
+> for both signing and encrypting. Internally, we create 2 keypairs -- one
+> for signing and one for encryption -- but this is hidden from the interface.
+
 
 ## Use
 This exposes ESM via [package.json `exports` field](https://nodejs.org/api/packages.html#exports).
@@ -101,11 +118,16 @@ cp ./node_modules/@bicycle-codes/package/dist/index.min.js ./public/webauthn-key
 ```
 
 #### HTML
+Link to the file you copied.
+
 ```html
 <script type="module" src="./webauthn-keys.min.js"></script>
 ```
 
 ## example
+
+### Create a new keypair
+
 Create a new keypair, and protect it with the `webatuhn` API.
 
 ```ts
@@ -118,7 +140,9 @@ const id = await create({
 })
 ```
 
-Save the public data of the new ID to `indexedDB`.
+### Save public data to `indexedDB`
+
+Save the public data of the new ID to `indexedDB`:
 
 ```ts
 import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
@@ -126,6 +150,8 @@ import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
 // save to indexedDB
 await pushLocalIdentity(id.localID, id.record)
 ```
+
+### get a persisted keypair
 
 Login again, and get the same keypair in memory. This will prompt for biometric authentication.
 
@@ -140,6 +166,10 @@ const keys = getKeys(authResult)
 * [username property](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-name)
 * [displayName property](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-display-name)
 * [What's the Difference Between User Name and User Display Name?](https://www.corbado.com/blog/webauthn-user-id-userhandle#user-name-vs-user-display-name)
+
+
+-------------------------------------------------------------------------
+
 
 ## API
 
