@@ -3,8 +3,8 @@ import libsodium from 'libsodium-wrappers'
 import { ASN1, type ASN1Data } from '@bicycle-codes/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
 import type { PassKeyPublicKey, Identity, JSONValue } from './types'
-import Debug from '@substrate-system/debug'
-const debug = Debug()
+// import Debug from '@substrate-system/debug'
+// const debug = Debug()
 
 await libsodium.ready
 const sodium = libsodium
@@ -305,7 +305,6 @@ export async function storeLocalIdentities (
 
 async function loadLocalIdentities ():Promise<Record<string, Identity>> {
     const localIds = await get('local-identities') || {}
-    debug('local ids', localIds)
 
     return (
         Object.fromEntries(

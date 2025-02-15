@@ -1,5 +1,5 @@
 import { type FunctionComponent, render } from 'preact'
-import { useCallback, useMemo, useRef } from 'preact/hooks'
+import { useCallback, useEffect, useRef } from 'preact/hooks'
 import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@substrate-system/debug'
@@ -70,10 +70,13 @@ const Example:FunctionComponent = function () {
     /**
      * For the list of local IDs on the right hand side
      */
-    useMemo(async () => {
-        const ids = await localIdentities()
-        if (!ids) return
-        localIds.value = ids
+    useEffect(() => {
+        (async () => {
+            const ids = await localIdentities()
+            debug('these are the local IDs', ids)
+            if (!ids) return
+            localIds.value = ids
+        })()
     }, [])
 
     /**
@@ -98,6 +101,7 @@ const Example:FunctionComponent = function () {
 
     /**
      * This is when you click the "login as ..." button
+     * (from the system UI)
      * @NOTE We need to abort the pending login that we use
      * for autocomplete.
      */
@@ -267,7 +271,10 @@ const Example:FunctionComponent = function () {
                                             </pre>
 
                                             <p>
-                                                <button onClick=${login} data-local-id=${k}>
+                                                <button
+                                                    onClick=${login}
+                                                    data-local-id=${k}
+                                                >
                                                     Login as this user
                                                 </button>
                                             </p>
