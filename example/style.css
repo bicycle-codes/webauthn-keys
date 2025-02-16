@@ -1,5 +1,10 @@
 body {
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    margin: 8px;
+}
+
+hr {
+    margin: 1rem 0;
 }
 
 button {
@@ -9,16 +14,20 @@ button {
 
 h1 {
     font-size: 1.4rem;
+    margin-bottom: 1rem;
     border-bottom: 2px solid;
 }
 
 h2 {
     margin-top: 0;
+    margin-bottom: 1rem;
     font-size: 1.2rem;
 }
 
 input {
     font-size: 1rem;
+    border: 1px solid;
+    padding: 0.4rem;
 }
 
 .saved {

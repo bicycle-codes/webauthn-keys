@@ -3,8 +3,8 @@ import libsodium from 'libsodium-wrappers'
 import { ASN1, type ASN1Data } from '@bicycle-codes/asn1'
 import { PUBLIC_KEY_ALGORITHMS } from './constants'
 import type { PassKeyPublicKey, Identity, JSONValue } from './types'
-// import Debug from '@substrate-system/debug'
-// const debug = Debug()
+import Debug from '@substrate-system/debug'
+const debug = Debug()
 
 await libsodium.ready
 const sodium = libsodium
@@ -262,7 +262,7 @@ export function packPublicKeyJSON (
     return (stringify ? JSON.stringify(_publicKey) : _publicKey)
 }
 
-export async function localIdentities ():Promise<Record<string, Identity>> {
+export async function localIdentities ():Promise<Record<string, Identity>|null> {
     const ids = await loadLocalIdentities()
     return ids
 }
@@ -271,7 +271,8 @@ export async function localIdentities ():Promise<Record<string, Identity>> {
  * Add a single new identity to local indexedDB.
  */
 export async function pushLocalIdentity (localId:string, id:Identity):Promise<void> {
-    const existingIds = await localIdentities()
+    let existingIds = await localIdentities()
+    if (!existingIds) existingIds = {}
     existingIds[localId] = id
     storeLocalIdentities(existingIds)
 }
@@ -303,8 +304,10 @@ export async function storeLocalIdentities (
     }
 }
 
-async function loadLocalIdentities ():Promise<Record<string, Identity>> {
+async function loadLocalIdentities ():Promise<Record<string, Identity>|null> {
     const localIds = await get('local-identities') || {}
+    debug(JSON.stringify(localIds, null, 2))
+    if (!Object.keys(localIds).length) return null
 
     return (
         Object.fromEntries(

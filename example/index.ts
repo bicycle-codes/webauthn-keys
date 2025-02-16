@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'preact/hooks'
 import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@substrate-system/debug'
+import '@substrate-system/css-normalize'
 import type { AuthResponse, Identity, LockKey } from '../src/types'
 import {
     toBase64String,
@@ -19,6 +20,19 @@ import {
 import './style.css'
 const debug = Debug()
 const ABORT = 'abort'
+
+// https://github.com/mylofi/webauthn-local-client/blob/main/test/test.js
+// registerBtn.onClick => promptRegister(false) => registerCredential(name, idString)
+//   id = toUint8(userId)
+//
+// reRegisterBtn.onClick => promptRegister(false)
+// authBtn.onClick => promptAuth
+// '#registered-credentials'.onClick => onAuthCredential
+
+// resetAllAccountsButton.click => resetAllAccounts
+// localIds.forEach => removeLocalAccount(id)
+
+// sodium.from_string  <-- Uint8Array from string
 
 const currentStep = signal<'create'|'logged-in'|null>(null)
 const myKeys = signal<LockKey|null>(null)
@@ -72,7 +86,7 @@ const Example:FunctionComponent = function () {
     useEffect(() => {
         (async () => {
             const ids = await localIdentities()
-            debug('these are the local IDs', ids)
+            debug('these are the local IDs', JSON.stringify(ids, null, 2))
             if (!ids) return
             localIds.value = ids
         })()
@@ -135,6 +149,11 @@ const Example:FunctionComponent = function () {
         })
 
         decryptedText.value = decrypted
+    }, [])
+
+    const removeIds = useCallback((ev:MouseEvent) => {
+        ev.preventDefault()
+        debug('remove the identities', localIds.value)
     }, [])
 
     /**
@@ -231,13 +250,22 @@ const Example:FunctionComponent = function () {
                         </div>
                     </form>
 
-                    <form class="choose-your-path">
+                    <hr />
+
+                    <div class="choose-your-path">
                         <div>
                             <button onClick=${() => (currentStep.value = 'create')}>
                                 Create a new identity
                             </button>
                         </div>
-                    </form>` :
+                    </div>
+
+                    <hr />
+
+                    <div>
+                        <button onClick=${removeIds}>Clear all IDs</button>
+                    </div>
+                    ` :
                     null
                 }
             </div> <!-- /.action -->

@@ -191,8 +191,8 @@ async function register (regOptions:CredentialCreationOptions, opts:{
 
         const regOpt:'public-key' = regOptions[credentialTypeKey]  // 'public-key'
 
-        // ensure credential IDs are binary (not base64 string)
         regOptions[regOpt].excludeCredentials = (
+            // ensure credential IDs are binary (not base64 string)
             normalizeCredentialsList(
                 regOptions[regOpt].excludeCredentials
             )
