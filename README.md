@@ -7,7 +7,7 @@
 [![license](https://img.shields.io/badge/license-Polyform_Non_Commercial-26bc71?style=flat-square)](LICENSE)
 
 
-A simple way to use crypto keys, protected by [webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
+A simple way to use crypto keys with [webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
 (biometric authentication).
 
 Save an ECC keypair, then access it iff the user authenticates via `webauthn`.
@@ -396,6 +396,11 @@ const ids = await localIdentities()
 ```
 
 ## develop
+
+>
+> [!TIP]
+> You can use the browser dev tools to [setup a virtual authenticator](https://developer.chrome.com/docs/devtools/webauthn)
+>
 
 ### start a local server
 

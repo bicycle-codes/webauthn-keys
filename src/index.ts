@@ -46,7 +46,7 @@ const CURRENT_LOCK_KEY_FORMAT_VERSION = 1
 
 /**
  * Create a new keypair.
- * This registers a new identity via `webauthn`.
+ * This registers a new identity
  */
 export async function create (
     _opts:Partial<{
@@ -78,7 +78,7 @@ export async function create (
         const lastSeq:number = 0
 
         /**
-         * @note
+         * @NOTE
          * encode the userHandle field of the passkey with the
          * first 32 bytes of the keypair IV, and then 2 bytes
          * to encode (big-endian) a passkey sequence value; this

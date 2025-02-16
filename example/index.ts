@@ -1,5 +1,5 @@
 import { type FunctionComponent, render } from 'preact'
-import { useCallback, useEffect, useRef } from 'preact/hooks'
+import { useCallback, useEffect } from 'preact/hooks'
 import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@substrate-system/debug'
@@ -57,7 +57,6 @@ const Example:FunctionComponent = function () {
     const localIds = useSignal<Record<string, Identity>|null>(null)
     const encryptedText = useSignal<string|null>(null)
     const decryptedText = useSignal<string|null>(null)
-    const input = useRef<HTMLInputElement>()
 
     if (import.meta.env.DEV) {
         // @ts-expect-error dev
@@ -221,7 +220,6 @@ const Example:FunctionComponent = function () {
                     <form onSubmit=${loginViaInput}>
                         <div>
                             <input
-                                ref=${input}
                                 type="text"
                                 id="username"
                                 name="username"
@@ -248,9 +246,6 @@ const Example:FunctionComponent = function () {
                 ${!currentStep.value ?
                     html`
                         <h2>Existing identities</h2>
-                        <p>
-                            The key is the user's ID.
-                        </p>
                         ${localIds.value ?
                             html`
                                 <ul>
