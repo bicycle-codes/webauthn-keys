@@ -297,6 +297,8 @@ export async function storeLocalIdentities (
             ]))
     )
 
+    debug('the idsssssssssss', identities)
+
     if (Object.keys(identities).length > 0) {
         await set('local-identities', identities)
     } else {
@@ -306,7 +308,6 @@ export async function storeLocalIdentities (
 
 async function loadLocalIdentities ():Promise<Record<string, Identity>|null> {
     const localIds = await get('local-identities') || {}
-    debug(JSON.stringify(localIds, null, 2))
     if (!Object.keys(localIds).length) return null
 
     return (

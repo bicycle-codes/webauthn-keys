@@ -29,7 +29,7 @@ import { createDebug } from '@substrate-system/debug'
 const debug = createDebug()
 
 export {
-    localIdentities,
+    localIdentities as listLocalIdentities,
     storeLocalIdentities,
     pushLocalIdentity,
     toBase64String,
@@ -190,12 +190,14 @@ async function register (regOptions:CredentialCreationOptions, opts:{
             throw new Error('WebAuthentication not supported on this device')
         }
 
-        const regOpt:'public-key' = regOptions[credentialTypeKey]  // 'public-key'
+        // const regOpt:'public-key' = regOptions[credentialTypeKey]  // 'public-key'
 
-        regOptions[regOpt].excludeCredentials = (
+        // regOptions[regOpt].excludeCredentials = (
+        regOptions['public-key'].excludeCredentials = (
             // ensure credential IDs are binary (not base64 string)
             normalizeCredentialsList(
-                regOptions[regOpt].excludeCredentials
+                regOptions['public-key'].excludeCredentials
+                // regOptions[regOpt].excludeCredentials
             )
         )
 
@@ -283,7 +285,7 @@ async function register (regOptions:CredentialCreationOptions, opts:{
     } catch (err) {
         if (err !== resetAbortReason) {
             throw new Error('Credential registration failed', { cause: err, })
-        }
+        }  // else, was aborted
     }
 
     return res!
@@ -491,7 +493,6 @@ export function authDefaults (
         ...opts
     }
 
-    debug('defaults', defaults)
     return defaults
 }
 

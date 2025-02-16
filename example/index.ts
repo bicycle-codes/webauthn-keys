@@ -8,7 +8,7 @@ import type { AuthResponse, Identity, LockKey } from '../src/types'
 import {
     toBase64String,
     create,
-    localIdentities,
+    listLocalIdentities,
     pushLocalIdentity,
     getKeys,
     encrypt,
@@ -21,6 +21,27 @@ import {
 import './style.css'
 const debug = Debug()
 const ABORT = 'abort'
+
+// @ts-expect-error dev
+window.localIds = listLocalIdentities
+
+// we don't have an equivalent to "unlock account", as in the data-lock example
+// (https://mylofi.github.io/local-data-lock/)
+// how are they populating the select box?
+//
+// selectEl.appendChild(localAcctID)
+//   localAcctID comes from `listLocalIdentites`
+
+// selectedAcctEl.change => changeSelectedAcct
+// this just disables/enables the 'unlock acct' button
+
+// unlock acct btn.click => unlockAcct
+//   getLockKey(selectedAcct)
+
+//
+// pass displayname to register
+// register is imported from local-client
+//
 
 // https://github.com/mylofi/webauthn-local-client/blob/main/test/test.js
 // registerBtn.onClick => promptRegister(false) => registerCredential(name, idString)
@@ -86,7 +107,7 @@ const Example:FunctionComponent = function () {
      */
     useEffect(() => {
         (async () => {
-            const ids = await localIdentities()
+            const ids = await listLocalIdentities()
             if (!ids) return
             localIds.value = ids
         })()
@@ -151,26 +172,19 @@ const Example:FunctionComponent = function () {
         decryptedText.value = decrypted
     }, [])
 
-    const removeIds = useCallback((ev:MouseEvent) => {
+    const removeIds = useCallback(async (ev:MouseEvent) => {
         ev.preventDefault()
         if (!localIds.value) {
             debug('nothing to remove...', localIds.value)
             return
         }
-        Object.keys(localIds.value).forEach(k => {
-            debug('removing this account...', localIds.value)
-            const id = localIds[k]
-            removeLocalAccount(id)
-        })
-    }, [])
 
-    /**
-     * @NOTE
-     * This doesn't get called if you use the autocomplete to login.
-     */
-    const loginViaInput = useCallback((ev:SubmitEvent) => {
-        ev.preventDefault()
-        debug('logging in via the input', ev)
+        await Promise.all(Object.keys(localIds.value).map(k => {
+            debug('removing this account...', k)
+            return removeLocalAccount(k)
+        }))
+
+        localIds.value = null
     }, [])
 
     return html`<div class="webauthn-keys-demo">
@@ -244,26 +258,6 @@ const Example:FunctionComponent = function () {
 
                 ${currentStep.value === null ?
                     html`<h2>Login</h2>
-                    <p>
-                        This input should offer to autocomplete with a passkey
-                        when focused.
-                    </p>
-                    <form onSubmit=${loginViaInput}>
-                        <div>
-                            <input
-                                type="text"
-                                id="username"
-                                name="username"
-                                autocomplete="username webauthn"
-                            />
-                        </div>
-                        <div>
-                            <button type="submit">Login</button>
-                        </div>
-                    </form>
-
-                    <hr />
-
                     <div class="choose-your-path">
                         <div>
                             <button onClick=${() => (currentStep.value = 'create')}>
