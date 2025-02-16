@@ -83,10 +83,12 @@ successful authentication with the `webauthn` API.
 
 ### first session
 
-Create a new keypair that serves as your identity
+Create a new keypair.
 
 ```js
 ```
+
+------------------------------------------------------------------
 
 ## Use
 This exposes ESM via [package.json `exports` field](https://nodejs.org/api/packages.html#exports).
@@ -132,6 +134,8 @@ Link to the file you copied.
 ```html
 <script type="module" src="./webauthn-keys.min.js"></script>
 ```
+
+------------------------------------------------------------------
 
 ## example
 
@@ -179,6 +183,20 @@ const keys = getKeys(authResult)
 
 -------------------------------------------------------------------------
 
+## develop
+
+>
+> [!TIP]
+> You can use the browser dev tools to [setup a virtual authenticator](https://developer.chrome.com/docs/devtools/webauthn)
+>
+
+### start a local server
+
+```sh
+npm start
+```
+
+-------------------------------------------------------------------
 
 ## API
 
@@ -395,18 +413,7 @@ import { localIdentites } from '@bicycle-codes/webauthn-keys'
 const ids = await localIdentities()
 ```
 
-## develop
-
->
-> [!TIP]
-> You can use the browser dev tools to [setup a virtual authenticator](https://developer.chrome.com/docs/devtools/webauthn)
->
-
-### start a local server
-
-```sh
-npm start
-```
+-----------------------------------------------------------------------
 
 ## test
 Run some automated tests of the cryptography API, not `webauthn`.
@@ -423,6 +430,8 @@ npm test
 npm run test:ci
 ```
 
+--------------------------------------------------------------------------
+
 ## see also
 
 * [Passkey vs. WebAuthn: What's the Difference?](https://teampassword.com/blog/passkey-vs-webauthn)
@@ -432,16 +441,25 @@ npm run test:ci
 
 ### [What's the WebAuthn User Handle (`response.userHandle`)?](https://www.corbado.com/blog/webauthn-user-id-userhandle#webauthn-user-handle)
 
-> Its primary function is to enable the authenticator to map a set of credentials (passkeys) to a specific user account.
+> Its primary function is to enable the authenticator to map a set of
+> credentials (passkeys) to a specific user account.
 
-> A secondary use of the User Handle (response.userHandle) is to allow authenticators to know when to replace an existing resident key (discoverable credential) with a new one during the registration ceremony.
+> A secondary use of the User Handle (response.userHandle) is to allow
+> authenticators to know when to replace an existing resident key (discoverable
+> credential) with a new one during the registration ceremony.
 
 ### `libsodium` docs
 
 * [How can I sign and encrypt using the same key pair?](https://libsodium.gitbook.io/doc/quickstart#how-can-i-sign-and-encrypt-using-the-same-key-pair)
 
 
+------------------------------------------------------------------------
+
 
 ## credits
 
-This is heavily influenced by [@lo-fi/local-data-lock](https://github.com/mylofi/local-data-lock) and [@lo-fi/webauthn-local-client](https://github.com/mylofi/webauthn-local-client). Thanks [@lo-fi organization](https://github.com/mylofi/local-data-lock) and [@getify](https://github.com/getify) for working in open source; this would not have been possible otherwise.
+This is heavily influenced by [@lo-fi/local-data-lock](https://github.com/mylofi/local-data-lock)
+and [@lo-fi/webauthn-local-client](https://github.com/mylofi/webauthn-local-client).
+Thanks [@lo-fi organization](https://github.com/mylofi/local-data-lock) and
+[@getify](https://github.com/getify) for working in open source; this would not
+have been possible otherwise.
