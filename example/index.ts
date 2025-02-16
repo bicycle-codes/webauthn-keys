@@ -15,6 +15,7 @@ import {
     decrypt,
     supportsWebAuthn,
     authDefaults,
+    removeLocalAccount,
     auth,
 } from '../src/index.js'
 import './style.css'
@@ -86,7 +87,6 @@ const Example:FunctionComponent = function () {
     useEffect(() => {
         (async () => {
             const ids = await localIdentities()
-            debug('these are the local IDs', JSON.stringify(ids, null, 2))
             if (!ids) return
             localIds.value = ids
         })()
@@ -153,7 +153,15 @@ const Example:FunctionComponent = function () {
 
     const removeIds = useCallback((ev:MouseEvent) => {
         ev.preventDefault()
-        debug('remove the identities', localIds.value)
+        if (!localIds.value) {
+            debug('nothing to remove...', localIds.value)
+            return
+        }
+        Object.keys(localIds.value).forEach(k => {
+            debug('removing this account...', localIds.value)
+            const id = localIds[k]
+            removeLocalAccount(id)
+        })
     }, [])
 
     /**
@@ -236,6 +244,10 @@ const Example:FunctionComponent = function () {
 
                 ${currentStep.value === null ?
                     html`<h2>Login</h2>
+                    <p>
+                        This input should offer to autocomplete with a passkey
+                        when focused.
+                    </p>
                     <form onSubmit=${loginViaInput}>
                         <div>
                             <input
@@ -281,26 +293,27 @@ const Example:FunctionComponent = function () {
                                         const id = localIds.value![k]
 
                                         return html`<li class="id">
-                                            <pre><b>key: </b>${k}</pre>
-                                            <pre>
-                                                <b>value</b>:
-                                                <br />
-                                                ${JSON.stringify(id, (k, val) => {
-                                                    if (k === 'spki' || k === 'raw') {
-                                                        return toBase64String(val)
-                                                    }
-                                                    return val
-                                                }, 2)}
-                                            </pre>
+                                            <b>key: </b>
+                                            <pre class="key">${k}</pre>
+                                            <br />
+                                            <b class="value">value:</b>
+                                            <details>
+                                                <pre>
+                                                    ${JSON.stringify(
+                                                        id,
+                                                        idStringifier,
+                                                        2)}
+                                                </pre>
+                                            </details>
 
-                                            <p>
+                                            <div>
                                                 <button
                                                     onClick=${login}
                                                     data-local-id=${k}
                                                 >
                                                     Login as this user
                                                 </button>
-                                            </p>
+                                            </div>
                                         </li>`
                                     })}
                                 </ul>
@@ -333,6 +346,13 @@ const Example:FunctionComponent = function () {
             </div>
         </section>
     </div>`
+}
+
+function idStringifier (k:string, val:Uint8Array):string|Uint8Array {
+    if (k === 'spki' || k === 'raw') {
+        return toBase64String(val)
+    }
+    return val
 }
 
 render(html`<${Example} />`, document.getElementById('root')!)

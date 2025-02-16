@@ -12,6 +12,10 @@ button {
     cursor: pointer;
 }
 
+p {
+    margin-bottom: 0.2rem;
+}
+
 h1 {
     font-size: 1.4rem;
     margin-bottom: 1rem;
@@ -20,8 +24,14 @@ h1 {
 
 h2 {
     margin-top: 0;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
     font-size: 1.2rem;
+    border-bottom: 2px solid;
+
+    &:not(:first-child) {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
 }
 
 input {
@@ -30,17 +40,34 @@ input {
     padding: 0.4rem;
 }
 
-.saved {
-    & .id {
-        border: 1px solid;
-        padding: 1rem;
-    }
+.value {
+    margin-right: 1rem;
+}
 
-    & ul {
-        padding: 0;
+details {
+    display: inline-block;
+}
 
-        & li {
-            margin-bottom: 1rem;
+.id {
+    border: 1px solid;
+    padding: 1rem;
+    overflow: scroll;
+}
+
+pre.key {
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+ul {
+    padding: 0;
+    list-style: none;
+
+    & li {
+        margin-bottom: 1rem;
+
+        & div {
+            margin-top: 1rem;
         }
     }
 }

@@ -147,6 +147,7 @@ export async function create (
  */
 export async function removeLocalAccount (localID:string):Promise<void> {
     const ids = await localIdentities()
+    if (!ids) return
     delete ids[localID]
     await storeLocalIdentities(ids)
 }
