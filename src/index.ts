@@ -190,14 +190,12 @@ async function register (regOptions:CredentialCreationOptions, opts:{
             throw new Error('WebAuthentication not supported on this device')
         }
 
-        // const regOpt:'public-key' = regOptions[credentialTypeKey]  // 'public-key'
+        const regOpt:'public-key' = regOptions[credentialTypeKey]  // 'public-key'
 
-        // regOptions[regOpt].excludeCredentials = (
-        regOptions['public-key'].excludeCredentials = (
+        regOptions[regOpt].excludeCredentials = (
             // ensure credential IDs are binary (not base64 string)
             normalizeCredentialsList(
-                regOptions['public-key'].excludeCredentials
-                // regOptions[regOpt].excludeCredentials
+                regOptions[regOpt].excludeCredentials
             )
         )
 
