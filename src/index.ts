@@ -136,7 +136,7 @@ export async function create (
         throw new Error('Identity/Passkey registration failed', { cause: err })
     }
 
-    return result!
+    return result
 }
 
 /**

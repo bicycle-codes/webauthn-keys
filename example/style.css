@@ -13,7 +13,7 @@ button {
 }
 
 p {
-    margin-bottom: 0.2rem;
+    margin-bottom: 1rem;
 }
 
 h1 {
@@ -101,7 +101,7 @@ ul {
     }
 
     & .action, & .right {
-        width: 50%;
+        width: calc(50% - 1rem);  /* Eliminate jank with details */
     }
 }
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'preact/hooks'
 import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@substrate-system/debug'
+import { NBSP } from '@substrate-system/util/constants'
 import '@substrate-system/css-normalize'
 import type { AuthResponse, Identity, LockKey } from '../src/types'
 import {
@@ -55,6 +56,25 @@ window.localIds = listLocalIdentities
 // localIds.forEach => removeLocalAccount(id)
 
 // sodium.from_string  <-- Uint8Array from string
+
+// -------------------------------
+
+/*
+This is like a logout function.
+
+async function lockAccount() {
+    clearLockKeyCache(currentAccountID);
+    currentAccountID = null;
+    selectAccountEl.selectedIndex = 0;
+    changeSelectedAccount();
+    updateElements();
+    showToast("Account locked.");
+}
+*/
+
+//
+// it ends up at `clearLockKeyCache`
+//
 
 const currentStep = signal<'create'|'logged-in'|null>(null)
 const myKeys = signal<LockKey|null>(null)
@@ -190,6 +210,11 @@ const Example:FunctionComponent = function () {
     return html`<div class="webauthn-keys-demo">
         <h1>webauthn-keys demo</h1>
 
+        <!-- <section class="explanation">
+            <p>
+            </p>
+        </section> -->
+
         <section class="main">
             <div class="action">
                 ${currentStep.value === 'create' ?
@@ -269,7 +294,13 @@ const Example:FunctionComponent = function () {
                     <hr />
 
                     <div>
-                        <button onClick=${removeIds}>Clear all IDs</button>
+                        <p>
+                            This will delete everything from${NBSP}
+                            <code>indexedDB</code>.
+                        </p>
+                        <button onClick=${removeIds}>
+                            Clear all IDs
+                        </button>
                     </div>
                     ` :
                     null
