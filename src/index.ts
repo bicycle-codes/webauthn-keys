@@ -18,6 +18,8 @@ import {
     fromBase64String,
     fromUTF8String
 } from './util'
+// import * as ASN1 from '@bicycle-codes/asn1'
+import { ASN1Parser as ASN1 } from '@bicycle-codes/asn1'
 import type {
     Identity,
     RegistrationResult,
@@ -26,8 +28,8 @@ import type {
     AuthResponse,
 } from './types'
 import { decode as cborDecode } from 'cborg'
-import { createDebug } from '@substrate-system/debug'
-const debug = createDebug()
+// import { createDebug } from '@substrate-system/debug'
+// const debug = createDebug()
 
 export {
     localIdentities as listLocalIdentities,
@@ -349,8 +351,12 @@ export async function auth (
 
         const authRes = (await navigator.credentials.get(authOptions)) as PublicKeyCredential
         if (!authRes) throw new Error('not credentials.get()')
+
         const passkey = identityRecord.passkeys.find(passkey => {
-            return (passkey.credentialID === authRes.response.credentialID)
+            // see https://github.com/mylofi/webauthn-local-client/blob/d0a759e463de7fc2b4ae84799fc5122d3749279f/src/walc.js#L353
+            // credentialID: toBase64String(new Uint8Array(authResult.rawId)),
+            const id = toBase64String(new Uint8Array(authRes.rawId))
+            return (passkey.credentialID === id)
         })
 
         const publicKey = passkey?.publicKey
@@ -566,4 +572,98 @@ export function authDefaults (
 function extractLockKey ({ userID }:{ userID:Uint8Array }) {
     const lockKey = deriveLockKey(userID.subarray(0, IV_BYTE_LENGTH))
     return lockKey
+}
+
+async function verifyAuthResponse (
+    /* response= */{
+        signature,
+        raw: {
+            clientDataJSON: clientDataRaw,
+            authenticatorData: authDataRaw,
+        },
+    }:Partial<{ signature, raw }> = {},
+    /* publicKey */{
+        algoCOSE: publicKeyAlgoCOSE,
+        spki: publicKeySPKI,
+        raw: publicKeyRaw,
+    }:Partial<{ algoCOSE, spki, raw }> = {}
+) {
+    try {
+        // all necessary inputs?
+        if (
+            signature && clientDataRaw && authDataRaw && publicKeySPKI &&
+            publicKeyRaw && Number.isInteger(publicKeyAlgoCOSE)
+        ) {
+            const verificationSig = parseSignature(publicKeyAlgoCOSE, signature)
+            const verificationData = await computeVerificationData(authDataRaw, clientDataRaw)
+            const status = await (
+            // Ed25519?
+                isPublicKeyAlgorithm('Ed25519', publicKeyAlgoCOSE) ?
+                // verification needs sodium (not subtle-crypto)
+                    verifySignatureSodium(
+                        publicKeyRaw,
+                        publicKeyAlgoCOSE,
+                        verificationSig,
+                        verificationData
+                    ) :
+
+                    (
+                        // ECDSA (P-256)?
+                        isPublicKeyAlgorithm('ES256', publicKeyAlgoCOSE) ||
+
+                        // RSASSA-PKCS1-v1_5?
+                        isPublicKeyAlgorithm('RS256', publicKeyAlgoCOSE) ||
+
+                        // RSASSA-PSS
+                        isPublicKeyAlgorithm('RSASSA-PSS', publicKeyAlgoCOSE)
+                    ) ?
+                    // verification supported by subtle-crypto
+                        verifySignatureSubtle(
+                            publicKeySPKI,
+                            publicKeyAlgoCOSE,
+                            verificationSig,
+                            verificationData
+                        ) :
+
+                        null
+            )
+            if (status == null) {
+                throw new Error('Unrecognized signature, failed validation')
+            }
+            return status
+        } else {
+            throw new Error('Auth verification missing required inputs')
+        }
+    } catch (err) {
+        throw new Error('Auth verification failed', { cause: err, })
+    }
+}
+
+function parseSignature (algoCOSE, signature) {
+    if (isPublicKeyAlgorithm('ES256', algoCOSE)) {
+        // this algorithm's signature comes back ASN.1 encoded, per spec:
+        //   https://www.w3.org/TR/webauthn-2/#sctn-signature-attestation-types
+        const der = ASN1.parseVerbose(signature)
+        return new Uint8Array([...der.children[0].value, ...der.children[1].value,])
+    }
+
+    // also per spec, other signature algorithms SHOULD NOT come back
+    // in ASN.1, so for those, we just pass through without any parsing
+    return signature
+}
+
+const publicKeyAlgorithmsLookup = Object.fromEntries(
+    publicKeyAlgorithms.flatMap(entry => [
+        // by name
+        [entry.name, entry,],
+
+        // by COSEID
+        [entry.COSEID, entry,],
+    ])
+)
+
+function isPublicKeyAlgorithm (algoName, COSEID) {
+    return (
+        publicKeyAlgorithmsLookup[algoName] === publicKeyAlgorithmsLookup[COSEID]
+    )
 }
