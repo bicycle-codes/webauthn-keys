@@ -16,16 +16,20 @@ import {
     pushLocalIdentity,
     asBufferOrString,
     fromBase64String,
-    fromUTF8String
+    fromUTF8String,
+    publicKeyAlgorithmsLookup,
+    verifySignatureSubtle,
+    verifySignatureSodium,
+    computeVerificationData,
+    // type COSE_NAME,
 } from './util'
-// import * as ASN1 from '@bicycle-codes/asn1'
 import { ASN1Parser as ASN1 } from '@bicycle-codes/asn1'
 import type {
     Identity,
     RegistrationResult,
     LockKey,
     JSONValue,
-    AuthResponse,
+    PassKeyPublicKey,
 } from './types'
 import { decode as cborDecode } from 'cborg'
 // import { createDebug } from '@substrate-system/debug'
@@ -311,47 +315,74 @@ export function stringify (keys:LockKey):string {
 }
 
 /**
- * Find an existing keypair and return it.
+ * Auth
+ * @param {string} localId The ID we are authenticating
+ * @param {Partial<CredentialRequestOptions> & {
+    * relyingPartyID?:string
+ * }} opts Some config
+ * @param {{ verify:boolean }} options More config
+ * @returns {Promise<{ request, response }>}
  */
 export async function auth (
-    localId?:string,
+    localId:string,
     opts:Partial<CredentialRequestOptions> & Partial<{
         relyingPartyID:string
-    }> = {}
-):Promise<AuthResponse> {
+    }> = {},
+    { verify }:{ verify?:boolean } = {}
+):Promise<{ request, response }> {
     const ids = await localIdentities()
-    if (!localId) {
-        opts = authDefaults(opts)
+    if (!ids) throw new Error('not ids')
 
-        const authRes = await navigator.credentials.get({
-            publicKey: opts.publicKey
-        }) as AuthResponse
+    const relyingPartyID = opts.relyingPartyID || document.location.hostname
+    const identityRecord = ids[localId]
+    const authOptions = authDefaults({
+        relyingPartyID,
+        mediation: 'optional',
+        // signal: abortToken.signal,
+    }, {
+        allowCredentials: (
+            identityRecord.passkeys.map(({ credentialID, }) => ({
+                type: 'public-key',
+                id: fromUTF8String(credentialID),
+            }))
+        ),
+    })
 
-        return authRes
-    } else {  // an ID was passed in
-        if (!ids) throw new Error('not ids')
-        const relyingPartyID = opts.relyingPartyID || document.location.hostname
-        const identityRecord = ids[localId]
-        const authOptions = authDefaults({
-            relyingPartyID,
-            mediation: 'optional',
-            // signal: abortToken.signal,
-        }, {
-            allowCredentials: (
-                identityRecord.passkeys.map(({ credentialID, }) => ({
-                    type: 'public-key',
-                    id: fromUTF8String(credentialID),
-                }))
-            ),
-        })
+    authOptions.publicKey!.allowCredentials = normalizeCredentialsList(
+        authOptions.publicKey!.allowCredentials!
+    )
 
-        authOptions.publicKey!.allowCredentials = normalizeCredentialsList(
-            authOptions.publicKey!.allowCredentials!
-        )
+    const authRes = (await navigator.credentials.get(authOptions)) as PublicKeyCredential|null
+    if (!authRes) throw new Error('not credentials.get()')
 
-        const authRes = (await navigator.credentials.get(authOptions)) as PublicKeyCredential
-        if (!authRes) throw new Error('not credentials.get()')
+    const authClientDataRaw = new Uint8Array(authRes.response.clientDataJSON)
+    const authClientData = JSON.parse(toUTF8String(authClientDataRaw))
+    if (authClientData.type !== 'webauthn.get') {
+        throw new Error('Invalid auth response')
+    }
+    const expectedChallenge = sodium.to_base64(
+        authOptions[authOptions[credentialTypeKey]].challenge,
+        sodium.base64_variants.URLSAFE_NO_PADDING
+    )
+    if (authClientData.challenge !== expectedChallenge) {
+        throw new Error('Challenge not accepted')
+    }
+    const response = authRes.response as AuthenticatorAssertionResponse
+    const authDataRaw = new Uint8Array(
+        response.authenticatorData
+    )
+    const authData = parseAuthenticatorData(authDataRaw)
+    if (!checkRPID(authData.rpIdHash, relyingPartyID)) {
+        throw new Error('Unexpected relying-party ID')
+    }
+    // sign-count not supported by this authenticator?
+    if (authData.signCount === 0) {
+        delete authData.signCount
+    }
 
+    const signatureRaw = new Uint8Array(response.signature)
+
+    if (verify) {
         const passkey = identityRecord.passkeys.find(passkey => {
             // see https://github.com/mylofi/webauthn-local-client/blob/d0a759e463de7fc2b4ae84799fc5122d3749279f/src/walc.js#L353
             // credentialID: toBase64String(new Uint8Array(authResult.rawId)),
@@ -359,21 +390,46 @@ export async function auth (
             return (passkey.credentialID === id)
         })
 
-        const publicKey = passkey?.publicKey
+        const publicKey = passkey?.publicKey as PassKeyPublicKey
         const verified = (
-            publicKey != null ?
-                (await verifyAuthResponse(authRes.response, publicKey)) :
+            publicKey ?
+                (await verifyAuthResponse(
+                    response,
+                    publicKey
+                )) :
                 false
         )
+
         if (!verified) {
             throw new Error('Auth verification failed')
         }
+    }
 
-        return {
-            ...authRes
+    return {
+        request: {
+            credentialType: authRes.type,
+            mediation: authOptions.mediation,
+            ...authOptions[authOptions[credentialTypeKey]],
+            ...Object.fromEntries(
+                Object.entries(authClientData).filter(([k, _v]) => {
+                    return ['origin', 'crossOrigin'].includes(k)
+                })
+            )
+        },
+        response: {
+            credentialID: toBase64String(new Uint8Array(authRes.rawId)),
+            signature: signatureRaw,
+            ...(Object.fromEntries(
+                Object.entries(authData).filter(([key]) => (
+                    ['flags', 'signCount', 'userPresence',
+                        'userVerification'].includes(key)
+                ))
+            )),
+            ...(response.userHandle != null ?
+                { userID: new Uint8Array(response.userHandle) } :
+                null
+            ),
         }
-
-        // const authResult = await auth(authOptions)
     }
 }
 
@@ -581,13 +637,19 @@ async function verifyAuthResponse (
             clientDataJSON: clientDataRaw,
             authenticatorData: authDataRaw,
         },
-    }:Partial<{ signature, raw }> = {},
-    /* publicKey */{
+    }:Partial<{ signature:ArrayBuffer, raw }> = {},
+    {
+        // publicKey
         algoCOSE: publicKeyAlgoCOSE,
         spki: publicKeySPKI,
         raw: publicKeyRaw,
-    }:Partial<{ algoCOSE, spki, raw }> = {}
+    }:Partial<{
+        algoCOSE:COSEAlgorithmIdentifier,
+        spki:string|Uint8Array,
+        raw:Uint8Array|string
+    }> = {}
 ) {
+    if (!publicKeyAlgoCOSE) throw new Error('not algoCOSE')
     try {
         // all necessary inputs?
         if (
@@ -595,13 +657,20 @@ async function verifyAuthResponse (
             publicKeyRaw && Number.isInteger(publicKeyAlgoCOSE)
         ) {
             const verificationSig = parseSignature(publicKeyAlgoCOSE, signature)
-            const verificationData = await computeVerificationData(authDataRaw, clientDataRaw)
+            const verificationData = await computeVerificationData(
+                authDataRaw,
+                clientDataRaw
+            )
+
             const status = await (
-            // Ed25519?
+                // Ed25519?
                 isPublicKeyAlgorithm('Ed25519', publicKeyAlgoCOSE) ?
-                // verification needs sodium (not subtle-crypto)
+                    // verification needs sodium (not subtle-crypto)
                     verifySignatureSodium(
-                        publicKeyRaw,
+                        typeof publicKeyRaw === 'string' ?
+                            fromBase64String(publicKeyRaw) :
+                            publicKeyRaw
+                        ,
                         publicKeyAlgoCOSE,
                         verificationSig,
                         verificationData
@@ -617,7 +686,7 @@ async function verifyAuthResponse (
                         // RSASSA-PSS
                         isPublicKeyAlgorithm('RSASSA-PSS', publicKeyAlgoCOSE)
                     ) ?
-                    // verification supported by subtle-crypto
+                        // verification supported by subtle-crypto
                         verifySignatureSubtle(
                             publicKeySPKI,
                             publicKeyAlgoCOSE,
@@ -639,28 +708,23 @@ async function verifyAuthResponse (
     }
 }
 
-function parseSignature (algoCOSE, signature) {
+function parseSignature (
+    algoCOSE:COSEAlgorithmIdentifier,
+    signature:ArrayBuffer
+):Uint8Array {
     if (isPublicKeyAlgorithm('ES256', algoCOSE)) {
         // this algorithm's signature comes back ASN.1 encoded, per spec:
         //   https://www.w3.org/TR/webauthn-2/#sctn-signature-attestation-types
-        const der = ASN1.parseVerbose(signature)
-        return new Uint8Array([...der.children[0].value, ...der.children[1].value,])
+        const der = ASN1.parseVerbose(new Uint8Array(signature))
+        return new Uint8Array(
+            [...der.children[0].value, ...der.children[1].value]
+        )
     }
 
     // also per spec, other signature algorithms SHOULD NOT come back
     // in ASN.1, so for those, we just pass through without any parsing
-    return signature
+    return new Uint8Array(signature)
 }
-
-const publicKeyAlgorithmsLookup = Object.fromEntries(
-    publicKeyAlgorithms.flatMap(entry => [
-        // by name
-        [entry.name, entry,],
-
-        // by COSEID
-        [entry.COSEID, entry,],
-    ])
-)
 
 function isPublicKeyAlgorithm (algoName, COSEID) {
     return (

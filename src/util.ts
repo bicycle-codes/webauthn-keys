@@ -136,15 +136,6 @@ export function fromUTF8String (val:string):Uint8Array {
     return sodium.from_string(val)
 }
 
-async function computeSHA256Hash (val) {
-    return new Uint8Array(
-        await window.crypto.subtle.digest(
-            'SHA-256',
-            new Uint8Array(val)
-        )
-    )
-}
-
 export function getPublicKeyOpts (opts:Partial<{
     username:string;
     usernameDisplay:string;
@@ -398,4 +389,154 @@ export function wipe (array:NumericArray):NumericArray {
         array[i] = 0
     }
     return array
+}
+
+// NOTE: these are ordered by "preference" for key
+// generation by WebAuthn create()
+const publicKeyAlgorithms = [
+    // Ed25519 / EdDSA
+    // https://oid-rep.orange-labs.fr/get/1.3.101.112
+    {
+        name: 'Ed25519',
+        COSEID: -8,
+        // note: Ed25519 is in draft, but not yet supported
+        // by subtle-crypto
+        //    https://wicg.github.io/webcrypto-secure-curves/
+        //    https://www.rfc-editor.org/rfc/rfc8410
+        //    https://caniuse.com/mdn-api_subtlecrypto_importkey_ed25519
+        cipherOpts: {
+            name: 'Ed25519',
+            hash: { name: 'SHA-512', },
+        },
+    },
+
+    // ES256 / ECDSA (P-256)
+    // https://oid-rep.orange-labs.fr/get/1.2.840.10045.2.1
+    {
+        name: 'ES256',
+        COSEID: -7,
+        cipherOpts: {
+            name: 'ECDSA',
+            namedCurve: 'P-256',
+            hash: { name: 'SHA-256', },
+        },
+    },
+
+    // RSASSA-PSS
+    // https://oid-rep.orange-labs.fr/get/1.2.840.113549.1.1.10
+    {
+        name: 'RSASSA-PSS',
+        COSEID: -37,
+        cipherOpts: {
+            name: 'RSA-PSS',
+            hash: { name: 'SHA-256', },
+        },
+    },
+
+    // RS256 / RSASSA-PKCS1-v1_5
+    // https://oid-rep.orange-labs.fr/get/1.2.840.113549.1.1.1
+    {
+        name: 'RS256',
+        COSEID: -257,
+        cipherOpts: {
+            name: 'RSASSA-PKCS1-v1_5',
+            hash: { name: 'SHA-256', },
+        },
+    },
+] as const
+
+export type COSE_NAME = (typeof publicKeyAlgorithms)[number]['name']
+
+export const publicKeyAlgorithmsLookup = Object.fromEntries(
+    publicKeyAlgorithms.flatMap(entry => [
+        // by name
+        [entry.name, entry,],
+
+        // by COSEID
+        [entry.COSEID, entry,],
+    ])
+)
+
+export async function verifySignatureSubtle (
+    publicKeySPKI:Uint8Array|string,
+    algoCOSE:COSEAlgorithmIdentifier,
+    signature:BufferSource,
+    data:BufferSource
+) {
+    if (
+        isPublicKeyAlgorithm('ES256', algoCOSE) ||
+        isPublicKeyAlgorithm('RSASSA-PSS', algoCOSE) ||
+        isPublicKeyAlgorithm('RS256', algoCOSE)
+    ) {
+        try {
+            const pubKeySubtle = await crypto.subtle.importKey(
+                'spki',  // Simple Public Key Infrastructure rfc2692
+                typeof publicKeySPKI === 'string' ?
+                    fromBase64String(publicKeySPKI) :
+                    publicKeySPKI,
+                publicKeyAlgorithmsLookup[algoCOSE].cipherOpts,
+                false,  // extractable
+                ['verify']
+            )
+
+            return await crypto.subtle.verify(
+                publicKeyAlgorithmsLookup[algoCOSE].cipherOpts,
+                pubKeySubtle,
+                signature,
+                data
+            )
+        } catch (err) {
+            console.log(err)
+            return false
+        }
+    }
+    throw new Error('Unrecognized signature for subtle-crypto verification')
+}
+
+export function verifySignatureSodium (
+    publicKeyRaw:Uint8Array,
+    algoCOSE:COSEAlgorithmIdentifier,
+    signature:Uint8Array,
+    data:Uint8Array
+) {
+    if (isPublicKeyAlgorithm('Ed25519', algoCOSE)) {
+        try {
+            return sodium.crypto_sign_verify_detached(signature, data, publicKeyRaw)
+        } catch (err) {
+            console.log(err)
+            return false
+        }
+    }
+    throw new Error('Unrecognized signature for sodium verification')
+}
+
+function isPublicKeyAlgorithm (
+    algoName:COSE_NAME,
+    COSEID:COSEAlgorithmIdentifier
+) {
+    return (publicKeyAlgorithmsLookup[algoName] ===
+        publicKeyAlgorithmsLookup[COSEID])
+}
+
+export async function computeVerificationData (
+    authDataRaw:ArrayBuffer,
+    clientDataRaw:ArrayBuffer
+):Promise<Uint8Array> {
+    const clientDataHash = await computeSHA256Hash(clientDataRaw)
+    const data = new Uint8Array(
+        authDataRaw.byteLength + clientDataHash.byteLength
+    )
+    data.set(new Uint8Array(authDataRaw), 0)
+    data.set(clientDataHash, authDataRaw.byteLength)
+
+    return data
+}
+
+async function computeSHA256Hash (val:ArrayBuffer) {
+    return new Uint8Array(
+        await window.crypto.subtle.digest(
+            'SHA-256',
+            new Uint8Array(val)
+        )
+    )
 }

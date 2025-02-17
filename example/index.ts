@@ -168,8 +168,8 @@ const Example:FunctionComponent = function () {
         const localID = (ev.target as HTMLButtonElement).dataset.localId
         debug('login with this ID', localID)
         abortSignal.abort(ABORT + ' Login via app UI')
-        const authResult = await auth(localID)
-        const keys = getKeys(authResult)
+        const authResult = await auth(localID!)
+        const keys = getKeys(authResult.response)
         myKeys.value = keys
         currentStep.value = 'logged-in'
     }, [])
@@ -248,7 +248,12 @@ const Example:FunctionComponent = function () {
                 }
 
                 ${currentStep.value === 'logged-in' ?
-                    html`<div class="logged-in">
+                    html`
+                    <p>
+                        You are logged in. Refresh the page to login again.
+                    </p>
+
+                    <div class="logged-in">
                         <h2>Your keys</h2>
                         <div class="keys">
                             <pre>

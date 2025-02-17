@@ -38,7 +38,7 @@
     ]
   },
   "dependencies": {
-    "@bicycle-codes/asn1": "^0.0.6",
+    "@bicycle-codes/asn1": "^0.0.7",
     "cborg": "^4.2.3",
     "idb-keyval": "^6.2.1",
     "libsodium": "^0.7.15",

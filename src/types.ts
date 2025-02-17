@@ -1,8 +1,8 @@
 export interface PassKeyPublicKey {
     algoCOSE:COSEAlgorithmIdentifier;
     algoOID:string;
-    raw:string;
-    spki:string;
+    raw:Uint8Array|string;
+    spki:Uint8Array|string;
 }
 
 export interface Passkey {

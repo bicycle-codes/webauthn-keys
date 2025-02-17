@@ -5,4 +5,4 @@ test/*.js
 dist
 .env
 public
-docs
+
