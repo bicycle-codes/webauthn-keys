@@ -15,7 +15,8 @@ import {
     storeLocalIdentities,
     pushLocalIdentity,
     asBufferOrString,
-    fromBase64String
+    fromBase64String,
+    fromUTF8String
 } from './util'
 import type {
     Identity,
@@ -311,16 +312,63 @@ export function stringify (keys:LockKey):string {
  * Find an existing keypair and return it.
  */
 export async function auth (
-    opts:Partial<CredentialRequestOptions> = {}
-):Promise<PublicKeyCredential & { response:AuthenticatorAssertionResponse }> {
-    opts = authDefaults(opts)
+    localId?:string,
+    opts:Partial<CredentialRequestOptions> & Partial<{
+        relyingPartyID:string
+    }> = {}
+):Promise<AuthResponse> {
+    const ids = await localIdentities()
+    if (!localId) {
+        opts = authDefaults(opts)
 
-    debug('opts', opts)
-    const authRes = await navigator.credentials.get({
-        publicKey: opts.publicKey
-    }) as AuthResponse
+        const authRes = await navigator.credentials.get({
+            publicKey: opts.publicKey
+        }) as AuthResponse
 
-    return authRes
+        return authRes
+    } else {  // an ID was passed in
+        if (!ids) throw new Error('not ids')
+        const relyingPartyID = opts.relyingPartyID || document.location.hostname
+        const identityRecord = ids[localId]
+        const authOptions = authDefaults({
+            relyingPartyID,
+            mediation: 'optional',
+            // signal: abortToken.signal,
+        }, {
+            allowCredentials: (
+                identityRecord.passkeys.map(({ credentialID, }) => ({
+                    type: 'public-key',
+                    id: fromUTF8String(credentialID),
+                }))
+            ),
+        })
+
+        authOptions.publicKey!.allowCredentials = normalizeCredentialsList(
+            authOptions.publicKey!.allowCredentials!
+        )
+
+        const authRes = (await navigator.credentials.get(authOptions)) as PublicKeyCredential
+        if (!authRes) throw new Error('not credentials.get()')
+        const passkey = identityRecord.passkeys.find(passkey => {
+            return (passkey.credentialID === authRes.response.credentialID)
+        })
+
+        const publicKey = passkey?.publicKey
+        const verified = (
+            publicKey != null ?
+                (await verifyAuthResponse(authRes.response, publicKey)) :
+                false
+        )
+        if (!verified) {
+            throw new Error('Auth verification failed')
+        }
+
+        return {
+            ...authRes
+        }
+
+        // const authResult = await auth(authOptions)
+    }
 }
 
 /**
@@ -474,20 +522,41 @@ export function encrypt (
     }
 }
 
+// interface PublicKeyCredentialRequestOptions {
+//     allowCredentials?: PublicKeyCredentialDescriptor[];
+//     challenge: BufferSource;
+//     extensions?: AuthenticationExtensionsClientInputs;
+//     rpId?: string;
+//     timeout?: number;
+//     userVerification?: UserVerificationRequirement;
+// }
+
+// interface CredentialRequestOptions {
+//     mediation?: CredentialMediationRequirement;
+//     publicKey?: PublicKeyCredentialRequestOptions;
+//     signal?: AbortSignal;
+// }
+
 export function authDefaults (
-    opts:Partial<CredentialRequestOptions> = {},
+    opts:Partial<CredentialRequestOptions> & Partial<{
+        relyingPartyID:string;
+    }> = {},
     keyOpts:Partial<PublicKeyCredentialRequestOptions> = {}
 ):CredentialRequestOptions {
+    const allowCredentials = keyOpts.allowCredentials || [
+        // { type: "public-key", id: ..., }
+    ]
     const defaults:CredentialRequestOptions = {
+        // challenge: keyOpts.challenge || sodium.randombytes_buf(20),
+        mediation: opts.mediation || 'conditional',
         publicKey: {
-            rpId: location.hostname,
-            // userVerification: 'required',
+            rpId: opts.relyingPartyID || location.hostname,
+            userVerification: keyOpts.userVerification || 'required',
+            allowCredentials,
             challenge: keyOpts.challenge || sodium.randombytes_buf(20),
-            // allowCredentials: keyOpts.allowCredentials,
             ...keyOpts,
         },
 
-        mediation: opts.mediation || 'conditional',
         ...opts
     }
 

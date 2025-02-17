@@ -76,6 +76,10 @@ async function lockAccount() {
 // it ends up at `clearLockKeyCache`
 //
 
+//
+// How to login with an ID, not with the OS passkey selector?
+//
+
 const currentStep = signal<'create'|'logged-in'|null>(null)
 const myKeys = signal<LockKey|null>(null)
 const abortSignal = new AbortController();
@@ -164,7 +168,7 @@ const Example:FunctionComponent = function () {
         const localID = (ev.target as HTMLButtonElement).dataset.localId
         debug('login with this ID', localID)
         abortSignal.abort(ABORT + ' Login via app UI')
-        const authResult = await auth()
+        const authResult = await auth(localID)
         const keys = getKeys(authResult)
         myKeys.value = keys
         currentStep.value = 'logged-in'
