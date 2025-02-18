@@ -86,6 +86,31 @@ successful authentication with the `webauthn` API.
 Create a new keypair.
 
 ```js
+import { create } from '@bicycle-codes/webauthn-keys'
+
+const id = await create({  // create a new user
+    username,
+    relyingPartyName: 'Example application'
+})
+```
+
+Save the new user to `indexedDB`
+
+```js
+import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
+
+// save the user to `indexedDB`
+await pushLocalIdentity(id.localID, id.record)
+```
+
+Login with this user
+
+```js
+import { auth } from '@bicycle-codes/webauthn-keys'
+
+// ... sometime in the future, login again ...
+const localID = buttonElement.dataset.localId
+const authResult = await auth(localID!)
 ```
 
 ------------------------------------------------------------------
