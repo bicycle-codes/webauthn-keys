@@ -1,6 +1,6 @@
 import { type FunctionComponent, render } from 'preact'
 import { useCallback, useEffect } from 'preact/hooks'
-import { useSignal, signal } from '@preact/signals'
+import { useSignal, signal, batch } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@substrate-system/debug'
 import { NBSP } from '@substrate-system/util/CONSTANTS'
@@ -117,6 +117,7 @@ const Example:FunctionComponent = function () {
     const localIds = useSignal<Record<string, Identity>|null>(null)
     const encryptedText = useSignal<string|null>(null)
     const decryptedText = useSignal<string|null>(null)
+    const loggedInAs = useSignal<null|Identity>(null)
 
     if (import.meta.env.DEV) {
         // @ts-expect-error dev
@@ -153,9 +154,12 @@ const Example:FunctionComponent = function () {
         // save the user to `indexedDB`
         await pushLocalIdentity(id.localID, id.record)
         const newState = { ...localIds.value, [id.localID]: id.record }
-        localIds.value = newState
-        myKeys.value = id.keys
-        currentStep.value = 'logged-in'
+        batch(() => {
+            localIds.value = newState
+            myKeys.value = id.keys
+            loggedInAs.value = id.record
+            currentStep.value = 'logged-in'
+        })
     }, [])
 
     /**
@@ -171,8 +175,15 @@ const Example:FunctionComponent = function () {
         const authResult = await auth(localID!)
         debug('the auth response', authResult)
         const keys = getKeys(authResult)
-        myKeys.value = keys
-        currentStep.value = 'logged-in'
+        // get the username from indexedDB
+        const record = localIds.value![localID!]
+        debug('the record', record)
+
+        batch(() => {
+            loggedInAs.value = record
+            myKeys.value = keys
+            currentStep.value = 'logged-in'
+        })
     }, [])
 
     const encryptMsg = useCallback((ev:SubmitEvent) => {
@@ -180,9 +191,7 @@ const Example:FunctionComponent = function () {
         if (!myKeys.value) throw new Error('not keys')
         const form = ev.target as HTMLFormElement
         const text = form.elements['text'].value
-        debug('encrypting...', text.value)
         const encrypted = encrypt(text, myKeys.value)
-        debug('the encrypted text', encrypted)
         encryptedText.value = encrypted
     }, [])
 
@@ -255,6 +264,12 @@ const Example:FunctionComponent = function () {
                     <div class="logged-in">
                         <h2>Your keys</h2>
                         <div class="keys">
+                            <p>
+                                You are logged in as <strong>
+                                    ${loggedInAs.value?.displayName}
+                                </strong>.
+                            </p>
+
                             <pre>
                                 ${JSON.stringify(myKeys.value, (k, val) => {
                                     if (
