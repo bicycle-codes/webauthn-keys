@@ -16,7 +16,7 @@ import {
     decrypt,
     supportsWebAuthn,
     authDefaults,
-    removeLocalAccount,
+    removeLocalAccounts,
     auth,
 } from '../src/index.js'
 import './style.css'
@@ -203,11 +203,9 @@ const Example:FunctionComponent = function () {
             return
         }
 
-        await Promise.all(Object.keys(localIds.value).map(async k => {
-            debug('removing this account...', k)
-            return await removeLocalAccount(k)
-        }))
+        debug('removing them...', localIds.value)
 
+        await removeLocalAccounts(Object.keys(localIds.value))
         localIds.value = null
     }, [])
 

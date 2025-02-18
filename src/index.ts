@@ -19,7 +19,6 @@ import {
     verifySignatureSubtle,
     verifySignatureSodium,
     computeVerificationData,
-    // type COSE_NAME,
 } from './util'
 import { ASN1Parser as ASN1 } from '@bicycle-codes/asn1'
 import type {
@@ -151,11 +150,19 @@ export async function create (
  * @param localID The public ID of the account
  * @returns {Promise<void>}
  */
-export async function removeLocalAccount (localID:string):Promise<void> {
-    const ids = await localIdentities()
-    if (!ids) return
-    delete ids[localID]
-    await storeLocalIdentities(ids)
+export async function removeLocalAccounts (localIDs:string[]):Promise<void> {
+    debug('qqqqqqqq', localIDs)
+    const locals = await localIdentities()
+    if (!locals) return
+    const newids = Object.keys(locals).reduce((acc, k) => {
+        if (locals && locals[k]) return acc
+        acc[k] = (locals && locals[k])
+        return acc
+    }, {})
+    await storeLocalIdentities(newids)
+    // await del('local-identities')
+    // delete ids[localID]
+    // await storeLocalIdentities(ids)
 }
 
 export function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
@@ -871,8 +878,6 @@ function regDefaults ({
             value: credentialType,
         }
     )
-
-    debug('the defaults...', defaults)
 
     return defaults
 }
