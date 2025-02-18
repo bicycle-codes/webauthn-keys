@@ -84,12 +84,12 @@ export async function create (
 
         /**
          * @NOTE
-         * encode the userHandle field of the passkey with the
+         * Encode the userHandle field of the passkey with the
          * first 32 bytes of the keypair IV, and then 2 bytes
          * to encode (big-endian) a passkey sequence value; this
          * additional value allows multiple passkeys (up to 65,535 of
          * them) registered on the same authenticator, sharing the same
-         * keypair IV in its userHandle
+         * keypair IV in its userHandle.
          */
         const userHandle = new Uint8Array(lockKey.iv.byteLength + 2)
         const seqBytes = new DataView(new ArrayBuffer(2))
@@ -151,18 +151,14 @@ export async function create (
  * @returns {Promise<void>}
  */
 export async function removeLocalAccounts (localIDs:string[]):Promise<void> {
-    debug('qqqqqqqq', localIDs)
     const locals = await localIdentities()
     if (!locals) return
     const newids = Object.keys(locals).reduce((acc, k) => {
-        if (locals && locals[k]) return acc
-        acc[k] = (locals && locals[k])
+        if (localIDs[k]) return acc  // filter
+        acc[k] = locals[k]
         return acc
     }, {})
     await storeLocalIdentities(newids)
-    // await del('local-identities')
-    // delete ids[localID]
-    // await storeLocalIdentities(ids)
 }
 
 export function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
