@@ -71,11 +71,10 @@ export async function create (
     const abortToken = new AbortController()
     const opts = Object.assign({
         username: 'local-user',
-        displayName: 'Local User',
+        displayName: _opts.displayName || _opts.username || 'Local User',
         relyingPartyID: document.location.hostname,
         relyingPartyName: 'demo'
     }, _opts)
-    opts.displayName = (_opts.displayName || _opts.username || opts.displayName)
     const { username, displayName, relyingPartyID, relyingPartyName } = opts
 
     let result:{ localID:string, record:Identity, keys:LockKey }
@@ -165,7 +164,6 @@ export async function removeLocalAccounts (localIDs:string[]):Promise<void> {
 }
 
 export function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
-    debug('deriving the key', iv)
     try {
         const ed25519KeyPair = sodium.crypto_sign_seed_keypair(iv)
 
@@ -308,8 +306,6 @@ async function register (regOptions:CredentialCreationOptions, opts:{
 export function getKeys (opts:{
     response:AuthenticatorAssertionResponse
 }):LockKey {
-    debug('in here', opts.response)
-    debug('in here, the user handle', opts.response.userHandle)
     const key = extractLockKey({
         userID: new Uint8Array(opts.response.userHandle!)
     })
@@ -374,9 +370,6 @@ export async function auth (
     if (authClientData.type !== 'webauthn.get') {
         throw new Error('Invalid auth response')
     }
-    // debug('aaaaaa', credentialTypeKey)
-    debug('aaaaaaa', authOptions)
-    // debug('cccccc', authOptions[credentialTypeKey])
     const publicKeyParams = authOptions.publicKey
     if (!publicKeyParams) throw new Error('not public key params')
     const expectedChallenge = sodium.to_base64(
@@ -423,8 +416,6 @@ export async function auth (
             throw new Error('Auth verification failed')
         }
     }
-
-    debug('the handle in `auth`', _response.userHandle)
 
     return {
         request: {
@@ -667,7 +658,6 @@ function toUint8Array (bufferSource:BufferSource):Uint8Array {
 }
 
 function extractLockKey ({ userID }:{ userID:Uint8Array }) {
-    debug('extracting...', userID)
     const lockKey = deriveLockKey(userID.subarray(0, IV_BYTE_LENGTH))
     return lockKey
 }
