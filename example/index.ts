@@ -3,7 +3,7 @@ import { useCallback, useEffect } from 'preact/hooks'
 import { useSignal, signal } from '@preact/signals'
 import { html } from 'htm/preact'
 import Debug from '@substrate-system/debug'
-import { NBSP } from '@substrate-system/util/constants'
+import { NBSP } from '@substrate-system/util/CONSTANTS'
 import '@substrate-system/css-normalize'
 import type { AuthResponse, Identity, LockKey } from '../src/types'
 import {
