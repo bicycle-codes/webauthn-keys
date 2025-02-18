@@ -75,6 +75,7 @@ export async function create (
         relyingPartyID: document.location.hostname,
         relyingPartyName: 'demo'
     }, _opts)
+    opts.displayName = (_opts.displayName || _opts.username || opts.displayName)
     const { username, displayName, relyingPartyID, relyingPartyName } = opts
 
     let result:{ localID:string, record:Identity, keys:LockKey }
