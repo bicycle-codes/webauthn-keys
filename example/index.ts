@@ -354,7 +354,7 @@ const Example:FunctionComponent = function () {
                         }
                     ` :
                     html`<div class="the-message">
-                        <h2>data<//>
+                        <h2>data</h2>
                         ${encryptedText.value ?
                             html`<div class="encrypted-text">
                                 <h2>The encrypted text<//>
