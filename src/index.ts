@@ -125,6 +125,8 @@ export async function create (
 
         result = {
             record: {
+                username,
+                displayName,
                 lastSeq,
                 passkeys: [
                     buildPasskeyEntry({
@@ -147,14 +149,14 @@ export async function create (
 /**
  * Delete an account from storage (indexedDB).
  *
- * @param localID The public ID of the account
+ * @param {string[]} localIDs The public IDs to remove
  * @returns {Promise<void>}
  */
 export async function removeLocalAccounts (localIDs:string[]):Promise<void> {
     const locals = await localIdentities()
     if (!locals) return
     const newids = Object.keys(locals).reduce((acc, k) => {
-        if (localIDs[k]) return acc  // filter
+        if (localIDs.indexOf(k) > -1) return acc  // filter
         acc[k] = locals[k]
         return acc
     }, {})
@@ -245,7 +247,7 @@ async function register (regOptions:CredentialCreationOptions, opts:{
 
         const regAuthData = parseAuthenticatorData(
             regAuthDataRaw
-        ) as Partial<ReturnType<typeof parseAuthenticatorData>>
+        ) as ReturnType<typeof parseAuthenticatorData>
 
         if (!checkRPID(regAuthData.rpIdHash, relyingPartyID)) {
             throw new Error('Unexpected relying-party ID')

@@ -14,6 +14,8 @@ export interface Passkey {
 
 export interface Identity {
     lastSeq:number;
+    username:string;
+    displayName:string;
     passkeys:Passkey[];
 }
 
