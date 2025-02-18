@@ -7,7 +7,6 @@ import {
     parsePublicKeySPKI,
     parseAuthenticatorData,
     checkRPID,
-    getPublicKeyOpts,
     buildPasskeyEntry,
     credentialTypeKey,
     resetAbortReason,
@@ -16,7 +15,6 @@ import {
     pushLocalIdentity,
     asBufferOrString,
     fromBase64String,
-    fromUTF8String,
     publicKeyAlgorithmsLookup,
     verifySignatureSubtle,
     verifySignatureSodium,
@@ -32,8 +30,9 @@ import type {
     PassKeyPublicKey,
 } from './types'
 import { decode as cborDecode } from 'cborg'
-// import { createDebug } from '@substrate-system/debug'
-// const debug = createDebug()
+import { PUBLIC_KEY_ALGORITHMS } from './constants'
+import { createDebug } from '@substrate-system/debug'
+const debug = createDebug()
 
 export {
     localIdentities as listLocalIdentities,
@@ -66,7 +65,7 @@ export async function create (
         username: 'local-user',
         displayName: 'Local User',
         relyingPartyID: document.location.hostname,
-        relyingPartyName: 'wacg'
+        relyingPartyName: 'demo'
     }
 ):Promise<{ localID:string, record:Identity, keys:LockKey }> {
     const lockKey = deriveLockKey()
@@ -75,7 +74,7 @@ export async function create (
         username: 'local-user',
         displayName: 'Local User',
         relyingPartyID: document.location.hostname,
-        relyingPartyName: 'wacg'
+        relyingPartyName: 'demo'
     }, _opts)
     const { username, displayName, relyingPartyID, relyingPartyName } = opts
 
@@ -99,16 +98,16 @@ export async function create (
         userHandle.set(lockKey.iv, 0)
         userHandle.set(new Uint8Array(seqBytes.buffer), lockKey.iv.byteLength)
 
-        const opts = {
+        const opts = regDefaults({
             signal: abortToken.signal,
-            publicKey: getPublicKeyOpts({
-                relyingPartyID,
-                relyingPartyName,
-                username,
-                userID: userHandle,
-                usernameDisplay: displayName
-            }),
-        }
+            relyingPartyID,
+            relyingPartyName,
+            user: {
+                id: userHandle,
+                name: username,
+                displayName
+            }
+        })
 
         // internal meta-data only
         Object.defineProperty(
@@ -160,6 +159,7 @@ export async function removeLocalAccount (localID:string):Promise<void> {
 }
 
 export function deriveLockKey (iv = generateEntropy(IV_BYTE_LENGTH)):LockKey {
+    debug('deriving the key', iv)
     try {
         const ed25519KeyPair = sodium.crypto_sign_seed_keypair(iv)
 
@@ -299,9 +299,11 @@ async function register (regOptions:CredentialCreationOptions, opts:{
 /**
  * Get the keys from a successful login resposne.
  */
-export function getKeys (opts:(PublicKeyCredential & {
+export function getKeys (opts:{
     response:AuthenticatorAssertionResponse
-})):LockKey {
+}):LockKey {
+    debug('in here', opts.response)
+    debug('in here, the user handle', opts.response.userHandle)
     const key = extractLockKey({
         userID: new Uint8Array(opts.response.userHandle!)
     })
@@ -309,6 +311,11 @@ export function getKeys (opts:(PublicKeyCredential & {
     return key
 }
 
+/**
+ * Get a base64 string of the given public key.
+ *
+ * @returns {string} A base64 string of the given public key.
+ */
 export function stringify (keys:LockKey):string {
     return toBase64String(keys.publicKey)
     // => 'welOX9O96R6WH0S8cqqwMlPAJ3VwMgAZEnc1wa1MN70='
@@ -335,6 +342,7 @@ export async function auth (
 
     const relyingPartyID = opts.relyingPartyID || document.location.hostname
     const identityRecord = ids[localId]
+    debug('authenticating...', identityRecord)
     const authOptions = authDefaults({
         relyingPartyID,
         mediation: 'optional',
@@ -343,7 +351,7 @@ export async function auth (
         allowCredentials: (
             identityRecord.passkeys.map(({ credentialID, }) => ({
                 type: 'public-key',
-                id: fromUTF8String(credentialID),
+                id: fromBase64String(credentialID),
             }))
         ),
     })
@@ -360,16 +368,21 @@ export async function auth (
     if (authClientData.type !== 'webauthn.get') {
         throw new Error('Invalid auth response')
     }
+    // debug('aaaaaa', credentialTypeKey)
+    debug('aaaaaaa', authOptions)
+    // debug('cccccc', authOptions[credentialTypeKey])
+    const publicKeyParams = authOptions.publicKey
+    if (!publicKeyParams) throw new Error('not public key params')
     const expectedChallenge = sodium.to_base64(
-        authOptions[authOptions[credentialTypeKey]].challenge,
+        toUint8Array(publicKeyParams.challenge),
         sodium.base64_variants.URLSAFE_NO_PADDING
     )
     if (authClientData.challenge !== expectedChallenge) {
         throw new Error('Challenge not accepted')
     }
-    const response = authRes.response as AuthenticatorAssertionResponse
+    const _response = authRes.response as AuthenticatorAssertionResponse
     const authDataRaw = new Uint8Array(
-        response.authenticatorData
+        _response.authenticatorData
     )
     const authData = parseAuthenticatorData(authDataRaw)
     if (!checkRPID(authData.rpIdHash, relyingPartyID)) {
@@ -380,7 +393,7 @@ export async function auth (
         delete authData.signCount
     }
 
-    const signatureRaw = new Uint8Array(response.signature)
+    const signatureRaw = new Uint8Array(_response.signature)
 
     if (verify) {
         const passkey = identityRecord.passkeys.find(passkey => {
@@ -394,7 +407,7 @@ export async function auth (
         const verified = (
             publicKey ?
                 (await verifyAuthResponse(
-                    response,
+                    _response,
                     publicKey
                 )) :
                 false
@@ -404,6 +417,8 @@ export async function auth (
             throw new Error('Auth verification failed')
         }
     }
+
+    debug('the handle in `auth`', _response.userHandle)
 
     return {
         request: {
@@ -417,6 +432,9 @@ export async function auth (
             )
         },
         response: {
+            ..._response,
+            // need to put `userHandle` specifically, I don't know why
+            userHandle: _response.userHandle,
             credentialID: toBase64String(new Uint8Array(authRes.rawId)),
             signature: signatureRaw,
             ...(Object.fromEntries(
@@ -425,8 +443,8 @@ export async function auth (
                         'userVerification'].includes(key)
                 ))
             )),
-            ...(response.userHandle != null ?
-                { userID: new Uint8Array(response.userHandle) } :
+            ...(_response.userHandle != null ?
+                { userID: new Uint8Array(_response.userHandle) } :
                 null
             ),
         }
@@ -609,13 +627,14 @@ export function authDefaults (
         // { type: "public-key", id: ..., }
     ]
     const defaults:CredentialRequestOptions = {
-        // challenge: keyOpts.challenge || sodium.randombytes_buf(20),
         mediation: opts.mediation || 'conditional',
         publicKey: {
             rpId: opts.relyingPartyID || location.hostname,
             userVerification: keyOpts.userVerification || 'required',
             allowCredentials,
-            challenge: keyOpts.challenge || sodium.randombytes_buf(20),
+            challenge: keyOpts.challenge ?
+                toUint8Array(keyOpts.challenge) :
+                sodium.randombytes_buf(20),
             ...keyOpts,
         },
 
@@ -625,7 +644,24 @@ export function authDefaults (
     return defaults
 }
 
+function toUint8Array (bufferSource:BufferSource):Uint8Array {
+    if (bufferSource instanceof ArrayBuffer) {
+        return new Uint8Array(bufferSource)
+    } else if (bufferSource instanceof Uint8Array) {
+        return bufferSource
+    } else if (bufferSource instanceof DataView) {
+        return new Uint8Array(
+            bufferSource.buffer,
+            bufferSource.byteOffset,
+            bufferSource.byteLength
+        )
+    } else {
+        throw new Error('Unsupported BufferSource type')
+    }
+}
+
 function extractLockKey ({ userID }:{ userID:Uint8Array }) {
+    debug('extracting...', userID)
     const lockKey = deriveLockKey(userID.subarray(0, IV_BYTE_LENGTH))
     return lockKey
 }
@@ -730,4 +766,113 @@ function isPublicKeyAlgorithm (algoName, COSEID) {
     return (
         publicKeyAlgorithmsLookup[algoName] === publicKeyAlgorithmsLookup[COSEID]
     )
+}
+
+type RegOpts = {
+    credentialType:'publicKey';
+    authenticatorSelection:Partial<{
+        authenticatorAttachment:AuthenticatorAttachment;
+        userVerification:'required';
+        residentKey:'required',
+        requireResidentKey:boolean,
+    }>;
+    relyingPartyID:string;
+    relyingPartyName:string;
+    attestation:AttestationConveyancePreference;
+    challenge:Uint8Array;
+    excludeCredentials:{ type, id }[];
+    user:Partial<{
+        name:string;
+        displayName:string;
+        id:Uint8Array;
+    }>;
+    publicKeyCredentialParams:{ type:'public-key', alg:COSEAlgorithmIdentifier }[];
+    signal:AbortSignal;
+}
+
+function regDefaults ({
+    credentialType = 'publicKey',
+    authenticatorSelection: {
+        authenticatorAttachment = 'platform',
+        userVerification = 'required',
+        residentKey = 'required',
+        requireResidentKey = true,
+
+        ...otherAuthenticatorSelctionProps
+    } = {},
+    relyingPartyID = document.location.hostname,
+    relyingPartyName = 'wacl',
+    attestation = 'none' as AttestationConveyancePreference,
+    challenge = sodium.randombytes_buf(20),
+    excludeCredentials = [
+        // { type: "public-key", id: ..., }
+    ],
+    user: {
+        name: userName = 'wacl-user',
+        displayName: userDisplayName = userName,
+        id: userID = sodium.randombytes_buf(5),
+    } = {},
+    publicKeyCredentialParams = (
+        PUBLIC_KEY_ALGORITHMS.map(entry => ({
+            type: 'public-key',
+            alg: entry.COSEID,
+        }))
+    ),
+    signal: cancelRegistrationSignal,
+    ...otherPubKeyOptions
+}:Partial<RegOpts> = {}):{ publicKey:PublicKeyCredentialCreationOptions } {
+    debug('creating another one: ', userID)
+
+    const defaults = {
+        [credentialType]: {
+            authenticatorSelection: {
+                authenticatorAttachment,
+                userVerification,
+                residentKey,
+                requireResidentKey,
+                ...otherAuthenticatorSelctionProps
+            },
+
+            attestation,
+
+            rp: {
+                id: relyingPartyID,
+                name: relyingPartyName,
+            },
+
+            user: {
+                name: userName,
+                displayName: userDisplayName,
+                id: userID,
+            },
+
+            challenge,
+
+            excludeCredentials,
+
+            pubKeyCredParams: publicKeyCredentialParams,
+
+            ...otherPubKeyOptions,
+        },
+
+        ...(cancelRegistrationSignal != null ?
+            { signal: cancelRegistrationSignal } :
+            null
+        ),
+    }
+    // internal meta-data only
+    Object.defineProperty(
+        defaults,
+        credentialTypeKey,
+        {
+            enumerable: false,
+            writable: false,
+            configurable: false,
+            value: credentialType,
+        }
+    )
+
+    debug('the defaults...', defaults)
+
+    return defaults
 }

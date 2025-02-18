@@ -289,9 +289,9 @@ export async function storeLocalIdentities (
     )
 
     if (Object.keys(identities).length > 0) {
-        await set('local-identities', identities)
+        return await set('local-identities', identities)
     } else {
-        await del('local-identities')
+        return await del('local-identities')
     }
 }
 

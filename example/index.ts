@@ -158,8 +158,7 @@ const Example:FunctionComponent = function () {
     }, [])
 
     /**
-     * This is when you click the "login as ..." button
-     * (from the system UI)
+     * This is when you click the "login as this user" button
      * @NOTE We need to abort the pending login that we use
      * for autocomplete.
      */
@@ -169,7 +168,8 @@ const Example:FunctionComponent = function () {
         debug('login with this ID', localID)
         abortSignal.abort(ABORT + ' Login via app UI')
         const authResult = await auth(localID!)
-        const keys = getKeys(authResult.response)
+        debug('the auth response', authResult)
+        const keys = getKeys(authResult)
         myKeys.value = keys
         currentStep.value = 'logged-in'
     }, [])
@@ -203,9 +203,9 @@ const Example:FunctionComponent = function () {
             return
         }
 
-        await Promise.all(Object.keys(localIds.value).map(k => {
+        await Promise.all(Object.keys(localIds.value).map(async k => {
             debug('removing this account...', k)
-            return removeLocalAccount(k)
+            return await removeLocalAccount(k)
         }))
 
         localIds.value = null
