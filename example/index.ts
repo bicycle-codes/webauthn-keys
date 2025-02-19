@@ -148,8 +148,7 @@ const Example:FunctionComponent = function () {
         const els = form.elements
         const username = (els['username'] as HTMLInputElement).value
         const id = await create({  // create a new user
-            username,
-            relyingPartyName: 'Example application'
+            username
         })
         // save the user to `indexedDB`
         await pushLocalIdentity(id.localID, id.record)

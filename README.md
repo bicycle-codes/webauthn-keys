@@ -91,8 +91,7 @@ Create a new keypair.
 import { create } from '@bicycle-codes/webauthn-keys'
 
 const id = await create({  // create a new user
-    username,
-    relyingPartyName: 'Example application'
+    username: 'alice'
 })
 ```
 
@@ -101,7 +100,6 @@ Save the new user to `indexedDB`
 ```js
 import { pushLocalIdentity } from '@bicycle-codes/webauthn-keys'
 
-// save the user to `indexedDB`
 await pushLocalIdentity(id.localID, id.record)
 ```
 
@@ -111,6 +109,7 @@ Login with this user
 import { auth } from '@bicycle-codes/webauthn-keys'
 
 // ... sometime in the future, login again ...
+
 const localID = buttonElement.dataset.localId
 const authResult = await auth(localID!)
 ```
@@ -168,7 +167,7 @@ Link to the file you copied.
 
 ### Create a new keypair
 
-Create a new keypair, and protect it with the `webatuhn` API.
+Create a new keypair, and keep it secret with the `webatuhn` API.
 
 ```ts
 import { create } from '@bicycle-codes/webauthn-keys'
@@ -176,7 +175,7 @@ import { create } from '@bicycle-codes/webauthn-keys'
 const id = await create({
     username: 'alice',  // unique within relying party (this device)
     displayName: 'Alice Example',  // human-readable name
-    relyingPartyName: 'Example application'  // rp.name
+    relyingPartyName: 'Example application'  // rp.name. Default is domain name
 })
 ```
 
@@ -440,7 +439,9 @@ import { localIdentites } from '@bicycle-codes/webauthn-keys'
 const ids = await localIdentities()
 ```
 
+
 -----------------------------------------------------------------------
+
 
 ## test
 Run some automated tests of the cryptography API, not `webauthn`.
