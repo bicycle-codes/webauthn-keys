@@ -6,13 +6,15 @@ import {
     encrypt,
     decrypt,
     stringify
-} from '.'
+} from './index.js'
+import type { LockKey } from './types.js'
 
 describe('webauthn-keys', () => {
-    let key
+    let key:LockKey
     test('create some keys', async () => {
         key = await deriveLockKey()
         expect(key).toBeTruthy()
+        expect(key.keyFormatVersion).toEqual(1)
     })
 
     let keyString:string
