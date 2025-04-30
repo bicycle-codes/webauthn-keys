@@ -47,7 +47,7 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",
     "@preact/signals": "^2.0.1",
-    "@substrate-system/css-normalize": "^0.0.8",
+    "@substrate-system/css-normalize": "^0.0.10",
     "@substrate-system/debug": "^0.7.18",
     "@substrate-system/util": "^0.1.21",
     "@types/libsodium-wrappers": "^0.7.14",
