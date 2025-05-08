@@ -48,7 +48,7 @@
     "@preact/preset-vite": "^2.10.1",
     "@preact/signals": "^2.0.1",
     "@substrate-system/css-normalize": "^0.0.10",
-    "@substrate-system/debug": "^0.8.0",
+    "@substrate-system/debug": "^0.9.0",
     "@substrate-system/util": "^0.1.21",
     "@types/libsodium-wrappers": "^0.7.14",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
